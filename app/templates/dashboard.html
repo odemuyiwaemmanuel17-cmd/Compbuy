@@ -1,0 +1,109 @@
+{% extends "base.html" %} {% block content %}
+<h1 class="text-2xl font-bold tracking-tight">Dashboard</h1>
+<p class="mt-1 text-sm text-slate-500">Everything on your side of the marketplace, {{ current_user.name }}.</p>
+
+{% include "partials/banner.html" %}
+
+<div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+  {% for stat in stats %}
+  <a href="{{ stat.href }}" class="rounded-xl border border-slate-200 bg-white p-4 hover:border-indigo-300">
+    <p class="text-xs uppercase tracking-wide text-slate-400">{{ stat.label }}</p>
+    <p class="mt-1 text-2xl font-bold text-slate-900">{{ stat.value }}</p>
+  </a>
+  {% endfor %}
+</div>
+
+<div class="mt-10 grid gap-8 lg:grid-cols-2">
+  <section id="offers-in">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-semibold">Offers on your listings</h2>
+      <a href="/seller/listings" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">Manage listings</a>
+    </div>
+    {% if inbound_offers %}
+    <ul class="mt-4 space-y-3">
+      {% for offer in inbound_offers %}
+      <li class="rounded-xl border border-slate-200 bg-white p-4">
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <p class="font-semibold text-slate-900 truncate">
+              <a href="/listings/{{ offer.listing_id }}" class="hover:text-indigo-600">{{ offer.listing_title or 'Listing removed' }}</a>
+            </p>
+            <p class="mt-0.5 text-sm text-slate-500">{{ offer.buyer_name }} &middot; {{ offer.amount_display }} &middot; {{ offer.placed_ago }}</p>
+            {% if offer.message %}
+            <p class="mt-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{{ offer.message }}</p>
+            {% endif %}
+          </div>
+          <span class="shrink-0 rounded-md px-2 py-1 text-xs font-semibold capitalize
+            {% if offer.status.value == 'pending' %} bg-amber-50 text-amber-700
+            {% elif offer.status.value == 'accepted' %} bg-emerald-50 text-emerald-700
+            {% elif offer.status.value == 'withdrawn' %} bg-slate-100 text-slate-500
+            {% else %} bg-rose-50 text-rose-700 {% endif %}">{{ offer.status.value }}</span>
+        </div>
+        {% if offer.status.value == 'pending' %}
+        <div class="mt-3 flex gap-2">
+          <form method="post" action="/offers/{{ offer.id }}/accept">
+            <button type="submit" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500">Accept</button>
+          </form>
+          <form method="post" action="/offers/{{ offer.id }}/decline">
+            <button type="submit" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Decline</button>
+          </form>
+        </div>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="mt-4 rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">No offers yet. Published listings with clear financials attract the most.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-semibold">Offers you placed</h2>
+      <a href="/buyer/offers" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">See all</a>
+    </div>
+    {% if outbound_offers %}
+    <ul class="mt-4 space-y-3">
+      {% for offer in outbound_offers[:5] %}
+      <li class="rounded-xl border border-slate-200 bg-white p-4 flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <p class="font-semibold truncate"><a href="/listings/{{ offer.listing_id }}" class="hover:text-indigo-600">{{ offer.listing_title or 'Listing removed' }}</a></p>
+          <p class="mt-0.5 text-sm text-slate-500">{{ offer.amount_display }} &middot; {{ offer.placed_ago }}</p>
+        </div>
+        <span class="shrink-0 rounded-md px-2 py-1 text-xs font-semibold capitalize
+          {% if offer.status.value == 'pending' %} bg-amber-50 text-amber-700
+          {% elif offer.status.value == 'accepted' %} bg-emerald-50 text-emerald-700
+          {% else %} bg-slate-100 text-slate-500 {% endif %}">{{ offer.status.value }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="mt-4 rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">You have not made an offer yet. <a href="/listings" class="font-semibold text-indigo-600">Browse listings</a>.</p>
+    {% endif %}
+  </section>
+
+  <section class="lg:col-span-2">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-semibold">Recent conversations</h2>
+      <a href="/messages" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">Open messages</a>
+    </div>
+    {% if conversations %}
+    <ul class="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
+      {% for thread in conversations[:5] %}
+      <li>
+        <a href="/messages/{{ thread.id }}" class="flex items-center justify-between gap-4 px-5 py-4 hover:bg-slate-50">
+          <div class="min-w-0">
+            <p class="font-semibold truncate">{{ thread.listing_title or 'Conversation' }}</p>
+            <p class="mt-0.5 text-sm text-slate-500 truncate">with {{ thread.counterparty_name(current_user.id) }}: {{ thread.preview }}</p>
+          </div>
+          <span class="shrink-0 text-xs text-slate-400">{{ thread.updated_ago }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="mt-4 rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">Conversations start when an offer is placed.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

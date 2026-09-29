@@ -1,0 +1,25 @@
+{% extends "base.html" %} {% block content %}
+<h1 class="text-2xl font-bold tracking-tight">Saved businesses</h1>
+<p class="mt-1 text-sm text-slate-500">{{ listings|length }} listing{{ 's' if listings|length != 1 else '' }} on your watchlist.</p>
+
+{% include "partials/banner.html" %}
+
+{% if listings %}
+<div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+  {% for listing in listings %}
+  <div class="relative">
+    {% include "partials/listing_card.html" %}
+    <form method="post" action="/buyer/watchlist/{{ listing.id }}/remove" class="mt-2 text-right">
+      <button type="submit" class="text-xs font-semibold text-slate-500 underline hover:text-slate-800">Remove</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="mt-6 rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
+  <p class="font-medium text-slate-700">Your watchlist is empty.</p>
+  <p class="mt-1 text-sm text-slate-400">Save listings to compare them later.</p>
+  <a href="/listings" class="mt-5 inline-flex items-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">Browse listings</a>
+</div>
+{% endif %}
+{% endblock %}

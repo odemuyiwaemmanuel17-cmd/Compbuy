@@ -1,0 +1,30 @@
+{% extends "base.html" %} {% from "partials/macros.html" import errors_for with context %} {% block content %}
+<div class="max-w-md mx-auto">
+  <div class="rounded-2xl border border-slate-200 bg-white p-7">
+    <h1 class="text-2xl font-bold tracking-tight">Welcome back</h1>
+    <p class="mt-1 text-sm text-slate-500">Sign in to manage your listings and offers.</p>
+
+    {% include "partials/banner.html" %}
+
+    <form method="post" action="/auth/login" class="mt-5 space-y-4">
+      <input type="hidden" name="next" value="{{ next }}" />
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" required value="{{ form.email or '' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        {{ errors_for('email') }}
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        {{ errors_for('password') }}
+      </div>
+      <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">Sign in</button>
+    </form>
+
+    <p class="mt-5 text-sm text-slate-500">
+      New here?
+      <a href="/auth/register{% if next %}?next={{ next | urlencode }}{% endif %}" class="font-semibold text-indigo-600 hover:text-indigo-500">Create an account</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %} {% block content %}
+<h1 class="text-2xl font-bold tracking-tight">Messages</h1>
+<p class="mt-1 text-sm text-slate-500">Negotiation threads with buyers and sellers.</p>
+
+{% include "partials/banner.html" %}
+
+{% if conversations %}
+<ul class="mt-6 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
+  {% for thread in conversations %}
+  <li>
+    <a href="/messages/{{ thread.id }}" class="flex items-start gap-4 px-5 py-4 hover:bg-slate-50">
+      <span class="mt-1 w-9 h-9 shrink-0 rounded-full bg-indigo-100 text-indigo-700 grid place-items-center text-sm font-semibold">{{ (thread.counterparty_name(current_user.id) or '?')[0] | upper }}</span>
+      <span class="min-w-0 flex-1">
+        <span class="flex items-baseline justify-between gap-3">
+          <span class="font-semibold text-slate-900 truncate">{{ thread.listing_title or 'Conversation' }}</span>
+          <span class="shrink-0 text-xs text-slate-400">{{ thread.updated_ago }}</span>
+        </span>
+        <span class="mt-0.5 block text-sm text-slate-500">with {{ thread.counterparty_name(current_user.id) }}</span>
+        <span class="mt-1 block text-sm text-slate-400 truncate">{{ thread.preview }}</span>
+      </span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="mt-6 rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
+  <p class="font-medium text-slate-700">No conversations yet.</p>
+  <p class="mt-1 text-sm text-slate-400">Threads open automatically when an offer is placed on a listing.</p>
+  <a href="/listings" class="mt-5 inline-flex items-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">Browse listings</a>
+</div>
+{% endif %}
+{% endblock %}
