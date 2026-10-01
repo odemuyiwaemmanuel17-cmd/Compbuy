@@ -1,0 +1,244 @@
+{% extends "base.html" %} {% from "partials/macros.html" import errors_for with context %} {% block content %}
+{% if is_own_listing %}
+<div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-center justify-between gap-4">
+  <span>This is your listing. Buyers see the published version.</span>
+  <a class="font-semibold underline" href="/seller/listings/{{ listing.id }}/edit">Edit listing</a>
+</div>
+{% endif %}
+
+{% if accepted_offer %}
+<div class="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+  An offer of {{ accepted_offer.amount_display }} has been accepted for this business.
+</div>
+{% endif %}
+
+<div class="grid gap-8 lg:grid-cols-3">
+  <div class="lg:col-span-2">
+    <nav class="text-sm text-slate-500">
+      <a href="/listings" class="hover:text-slate-800">Browse</a>
+      <span class="mx-2 text-slate-300">/</span>
+      <a href="/listings?category={{ listing.category }}" class="hover:text-slate-800">{{ listing.category_label }}</a>
+    </nav>
+
+    <h1 class="mt-3 text-3xl font-bold tracking-tight">{{ listing.title }}</h1>
+    <p class="mt-2 text-slate-600 text-lg">{{ listing.one_liner }}</p>
+
+    <dl class="mt-8 grid grid-cols-2 gap-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <dt class="text-xs uppercase tracking-wide text-slate-400">Asking price</dt>
+        <dd class="mt-1 text-xl font-bold text-slate-900">{{ listing.price_display_compact }}</dd>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <dt class="text-xs uppercase tracking-wide text-slate-400">Revenue band</dt>
+        <dd class="mt-1 text-xl font-bold text-slate-900">{{ listing.revenue_band_label }}</dd>
+      </div>
+    </dl>
+
+    <section class="mt-8">
+      <h2 class="text-lg font-semibold">About this business</h2>
+      <p class="mt-3 whitespace-pre-wrap text-slate-600 leading-relaxed">{{ listing.description }}</p>
+    </section>
+
+    <section class="mt-8 rounded-xl border border-slate-200 bg-white p-5">
+      <h2 class="text-sm font-semibold text-slate-900">Public details</h2>
+      <dl class="mt-3 grid gap-x-8 gap-y-3 sm:grid-cols-2 text-sm">
+        <div class="flex justify-between gap-4 border-b border-slate-100 pb-2">
+          <dt class="text-slate-500">Category</dt>
+          <dd class="font-medium">{{ listing.category_label }}</dd>
+        </div>
+        <div class="flex justify-between gap-4 border-b border-slate-100 pb-2">
+          <dt class="text-slate-500">Location</dt>
+          <dd class="font-medium">{{ listing.location or 'Remote' }}</dd>
+        </div>
+        <div class="flex justify-between gap-4 border-b border-slate-100 pb-2">
+          <dt class="text-slate-500">Established</dt>
+          <dd class="font-medium">{{ listing.established_year or 'Not disclosed' }}</dd>
+        </div>
+        <div class="flex justify-between gap-4 border-b border-slate-100 pb-2">
+          <dt class="text-slate-500">Listed</dt>
+          <dd class="font-medium">{{ listing.posted_ago }}</dd>
+        </div>
+        <div class="flex justify-between gap-4 border-b border-slate-100 pb-2">
+          <dt class="text-slate-500">Status</dt>
+          <dd class="font-medium capitalize">{{ listing.status.value }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="mt-8 rounded-xl border {% if listing.data_room_unlocked %}border-emerald-200 bg-emerald-50/40{% else %}border-slate-300 border-dashed bg-slate-50{% endif %} p-5">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-sm font-semibold uppercase tracking-wide {% if listing.data_room_unlocked %}text-emerald-700{% else %}text-slate-500{% endif %}">
+            {% if listing.data_room_unlocked %}Data room — unlocked{% else %}Private data room{% endif %}
+          </h2>
+          <p class="mt-1 text-sm text-slate-500">
+            {% if listing.data_room_unlocked %}
+            Visible to you and the seller only.
+            {% else %}
+            Confidential figures are released after the seller approves you and you sign the NDA.
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <dl class="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2 text-sm">
+        <div class="flex justify-between gap-4 border-b border-slate-200 pb-2">
+          <dt class="text-slate-500">Business name</dt>
+          <dd class="font-medium text-right">{{ listing.display_name if listing.data_room_unlocked else 'Members only' }}</dd>
+        </div>
+        <div class="flex justify-between gap-4 border-b border-slate-200 pb-2">
+          <dt class="text-slate-500">Monthly revenue</dt>
+          <dd class="font-medium">{{ listing.monthly_revenue_display }}</dd>
+        </div>
+        <div class="flex justify-between gap-4 border-b border-slate-200 pb-2">
+          <dt class="text-slate-500">Annual revenue</dt>
+          <dd class="font-medium">{{ listing.annual_revenue_display }}</dd>
+        </div>
+        <div class="flex justify-between gap-4 border-b border-slate-200 pb-2">
+          <dt class="text-slate-500">Monthly net profit</dt>
+          <dd class="font-medium">{{ listing.net_profit_display }}</dd>
+        </div>
+        <div class="flex justify-between gap-4 border-b border-slate-200 pb-2">
+          <dt class="text-slate-500">Annual profit</dt>
+          <dd class="font-medium">{{ listing.annual_profit_display }}</dd>
+        </div>
+        <div class="flex justify-between gap-4 border-b border-slate-200 pb-2">
+          <dt class="text-slate-500">Profit margin</dt>
+          <dd class="font-medium">{{ listing.profit_margin }}</dd>
+        </div>
+        <div class="flex justify-between gap-4 border-b border-slate-200 pb-2">
+          <dt class="text-slate-500">Revenue multiple</dt>
+          <dd class="font-medium">{{ listing.revenue_multiple }}</dd>
+        </div>
+      </dl>
+
+      {% if not listing.data_room_unlocked %}
+      <p class="mt-4 text-sm text-slate-600">
+        <span class="font-semibold">{{ listing.gated_figure_count }}</span> confidential values are hidden on this listing.
+      </p>
+      {% else %}
+      <div class="mt-4">
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Reason for selling</h3>
+        <p class="mt-2 whitespace-pre-wrap text-sm text-slate-700">{{ listing.reason_for_selling_display }}</p>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <aside class="space-y-5">
+    <div class="rounded-xl border border-slate-200 bg-white p-5 sticky top-24">
+      <div class="flex items-baseline justify-between">
+        <p class="text-2xl font-bold">{{ listing.price_display }}</p>
+        <span class="text-xs font-semibold uppercase tracking-wide text-emerald-600">For sale</span>
+      </div>
+
+      <div class="mt-4 flex items-center gap-3 border-t border-slate-100 pt-4">
+        <span class="w-9 h-9 rounded-full bg-slate-100 grid place-items-center text-sm font-semibold text-slate-600">{{ (seller.name if seller else 'Sb')[0] | upper }}</span>
+        <div class="min-w-0">
+          <p class="text-sm font-semibold truncate">{{ seller.name if seller else 'Private seller' }}</p>
+          <p class="text-xs text-slate-400">Business owner</p>
+        </div>
+      </div>
+
+      {% if not is_own_listing %}
+
+      {# ---------------------------------------------------- data room access #}
+      <div class="mt-5 border-t border-slate-100 pt-4">
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Data room access</h3>
+        {% if not current_user %}
+        <p class="mt-2 text-sm text-slate-600">Sign in to request access and sign the NDA.</p>
+        <a href="/auth/login?next=/listings/{{ listing.id }}" class="mt-3 block w-full rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">Sign in to request access</a>
+
+        {% elif listing.data_room_unlocked %}
+        <p class="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+          NDA signed{% if nda_request and nda_request.signed_ago %} {{ nda_request.signed_ago }}{% endif %}. The figures above are visible to you.
+        </p>
+        {% if nda_request and nda_request.signed_name %}
+        <p class="mt-1 text-xs text-slate-500">Signed as {{ nda_request.signed_name }}. A countersigned agreement cannot be withdrawn here &mdash; ask the seller to close the request.</p>
+        {% endif %}
+
+        {% elif nda_request and nda_request.status.value == 'pending' %}
+        <p class="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">{{ nda_request.status_label }}</p>
+        <form method="post" action="/nda/{{ nda_request.id }}/withdraw" class="mt-3">
+          <button type="submit" class="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Withdraw request</button>
+        </form>
+
+        {% elif nda_request and nda_request.status.value == 'approved' %}
+        <p class="mt-2 rounded-lg bg-sky-50 px-3 py-2 text-sm font-medium text-sky-800">{{ nda_request.status_label }}</p>
+        <form method="post" action="/nda/{{ nda_request.id }}/sign" class="mt-3 space-y-2">
+          <div>
+            <label class="block text-sm font-medium text-slate-700" for="full_name">Sign as (your full name)</label>
+            <input id="full_name" name="full_name" type="text" required maxlength="120" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="{{ current_user.name }}" />
+          </div>
+          <p class="text-xs text-slate-500">By signing you agree to keep the disclosed figures confidential and not to contact the business&rsquo;s customers or staff.</p>
+          <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">Sign NDA &amp; unlock</button>
+        </form>
+
+        {% elif nda_request and nda_request.status.value in ('rejected', 'withdrawn') %}
+        <p class="mt-2 rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700">{{ nda_request.status_label }} &mdash; you can ask again with more context.</p>
+        <form method="post" action="/listings/{{ listing.id }}/nda-request" class="mt-3 space-y-2">
+          <textarea name="message" rows="3" required minlength="10" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Tell the seller who you are and why you are buying."></textarea>
+          <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">Request access again</button>
+        </form>
+
+        {% else %}
+        <form method="post" action="/listings/{{ listing.id }}/nda-request" class="mt-3 space-y-2">
+          <div>
+            <label class="block text-sm font-medium text-slate-700" for="nda_message">Note for the seller</label>
+            <textarea id="nda_message" name="message" rows="3" required minlength="10" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="I am a solo buyer with financing in place&hellip;"></textarea>
+          </div>
+          <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">Request access / Sign NDA</button>
+        </form>
+        {% endif %}
+      </div>
+
+      {# ------------------------------------------------------------- offers #}
+      {% if current_user %}
+      <form method="post" action="/listings/{{ listing.id }}/offers" class="mt-5 space-y-3">
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="amount">Your offer ({{ listing.currency }})</label>
+          <input id="amount" name="amount" type="number" min="1" step="1000" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="{{ listing.asking_price }}" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="kind">Type</label>
+          <select id="kind" name="kind" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <option value="offer">Firm offer</option>
+            <option value="loi">Letter of intent (non-binding)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="message">Note to the seller <span class="font-normal text-slate-400">optional</span></label>
+          <textarea id="message" name="message" rows="3" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Why you are a good fit, timeline, conditions&hellip;"></textarea>
+        </div>
+        <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">Submit offer</button>
+      </form>
+
+      {% if my_offer %}
+      <div class="mt-4 rounded-lg bg-slate-50 p-3 text-sm">
+        <p class="font-semibold text-slate-800">Your last {{ my_offer.kind_label | lower }}: {{ my_offer.amount_display }} &middot; <span class="capitalize">{{ my_offer.status.value }}</span></p>
+        <p class="mt-1 text-xs text-slate-500">Placed {{ my_offer.placed_ago }}</p>
+        {% if my_offer.status.value == 'pending' %}
+        <form method="post" action="/offers/{{ my_offer.id }}/withdraw" class="mt-2">
+          <button type="submit" class="text-xs font-semibold text-slate-500 underline hover:text-slate-800">Withdraw offer</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="mt-5 space-y-2 border-t border-slate-100 pt-4">
+        <a href="/auth/login?next=/listings/{{ listing.id }}" class="block w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-indigo-500">Sign in to make an offer</a>
+        <a href="/auth/register?next=/listings/{{ listing.id }}" class="block w-full rounded-lg border border-slate-300 px-4 py-2.5 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">Create a buyer account</a>
+      </div>
+      {% endif %}
+
+      {% if current_user %}
+      <form method="post" action="/buyer/watchlist/{{ listing.id }}{% if is_saved %}/remove{% endif %}" class="mt-3">
+        <button type="submit" class="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+          {{ is_saved and 'Remove from watchlist' or 'Save to watchlist' }}
+        </button>
+      </form>
+      {% endif %} {% endif %}
+    </div>
+  </aside>
+</div>
+{% endblock %}

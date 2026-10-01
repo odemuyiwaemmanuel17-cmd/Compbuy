@@ -1,0 +1,12 @@
+{% macro errors_for(name) -%}
+{% if field_errors and field_errors.get(name) %}
+<p class="mt-1 text-xs font-medium text-rose-600">{{ field_errors[name] | join(', ') }}</p>
+{% endif %}
+{%- endmacro %}
+
+{% macro label(name, text, hint='') -%}
+<label class="block text-sm font-medium text-slate-700">
+  {{ text }}
+  {% if hint %}<span class="font-normal text-slate-400">{{ hint }}</span>{% endif %}
+</label>
+{%- endmacro %}

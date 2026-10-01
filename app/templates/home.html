@@ -1,0 +1,65 @@
+{% extends "base.html" %} {% block content %}
+<section class="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 px-6 py-12 sm:px-12 text-white">
+  <div class="max-w-3xl">
+    <h1 class="text-3xl sm:text-4xl font-bold tracking-tight">Buy a business that already works.</h1>
+    <p class="mt-3 text-indigo-100 text-base">
+      {{ published_count }} verified business{{ 'es' if published_count != 1 else '' }} for sale. Browse by revenue, make
+      an offer in minutes, and negotiate with the owner directly.
+    </p>
+    <form method="get" action="/listings" class="mt-7 flex flex-col sm:flex-row gap-3">
+      <input
+        type="search"
+        name="q"
+        placeholder="Search SaaS, agencies, e-commerce&hellip;"
+        class="flex-1 rounded-lg border-0 px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-white"
+      />
+      <button type="submit" class="rounded-lg bg-slate-900 px-6 py-3 font-semibold text-white hover:bg-slate-800">
+        Search
+      </button>
+    </form>
+    <div class="mt-5 flex flex-wrap gap-2">
+      {% for value, label in CATEGORY_CHOICES %}
+      <a href="/listings?category={{ value }}" class="rounded-full bg-white/15 px-3 py-1 text-sm font-medium hover:bg-white/25">{{ label }}</a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="mt-12">
+  <div class="flex items-end justify-between gap-4">
+    <h2 class="text-xl font-semibold tracking-tight">Latest listings</h2>
+    <a href="/listings" class="text-sm font-semibold text-indigo-600 hover:text-indigo-500">View all &rarr;</a>
+  </div>
+
+  {% if featured_listings %}
+  <div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    {% for listing in featured_listings %} {% include "partials/listing_card.html" %} {% endfor %}
+  </div>
+  {% else %}
+  <div class="mt-6 rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
+    <p class="text-slate-600 font-medium">No businesses are listed yet.</p>
+    <p class="mt-1 text-sm text-slate-400">Be the first to put a company on the marketplace.</p>
+    <a href="/auth/register" class="mt-5 inline-flex items-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">
+      List your business
+    </a>
+  </div>
+  {% endif %}
+</section>
+
+<section class="mt-14 grid gap-6 sm:grid-cols-3">
+  {% block value_props %}
+  <div class="rounded-xl border border-slate-200 bg-white p-6">
+    <h3 class="font-semibold">Serious buyers only</h3>
+    <p class="mt-2 text-sm text-slate-500">Every offer comes from an account with a verified email, so you never field tyre-kickers.</p>
+  </div>
+  <div class="rounded-xl border border-slate-200 bg-white p-6">
+    <h3 class="font-semibold">Negotiate in one place</h3>
+    <p class="mt-2 text-sm text-slate-500">Threads open automatically with the first offer, keeping terms and history together.</p>
+  </div>
+  <div class="rounded-xl border border-slate-200 bg-white p-6">
+    <h3 class="font-semibold">Publish in minutes</h3>
+    <p class="mt-2 text-sm text-slate-500">Save as a draft, review the numbers, then go live when you are ready.</p>
+  </div>
+  {% endblock %}
+</section>
+{% endblock %}

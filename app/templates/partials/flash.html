@@ -1,0 +1,15 @@
+{% if flash_messages %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-2">
+  {% for item in flash_messages %}
+  <div
+    role="status"
+    class="rounded-lg border px-4 py-3 text-sm font-medium
+      {% if item.category == 'success' %} bg-emerald-50 border-emerald-200 text-emerald-800
+      {% elif item.category == 'error' %} bg-rose-50 border-rose-200 text-rose-800
+      {% else %} bg-sky-50 border-sky-200 text-sky-800 {% endif %}"
+  >
+    {{ item.text }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

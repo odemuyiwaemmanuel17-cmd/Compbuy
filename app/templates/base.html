@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}{{ page_title or SITE_NAME }} &middot; {{ SITE_NAME }}{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/app.css" />
+    <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="min-h-full bg-slate-50 text-slate-900 antialiased flex flex-col">
+    {% include "partials/nav.html" %} {% include "partials/flash.html" %}
+
+    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {% block content %}{% endblock %}
+    </main>
+
+    {% include "partials/footer.html" %} {% block scripts %}{% endblock %}
+  </body>
+</html>

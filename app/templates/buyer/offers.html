@@ -1,0 +1,61 @@
+{% extends "base.html" %} {% block content %}
+<h1 class="text-2xl font-bold tracking-tight">My offers</h1>
+<p class="mt-1 text-sm text-slate-500">Every offer you have placed on a business.</p>
+
+{% include "partials/banner.html" %}
+
+{% if offers %}
+<div class="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+      <tr>
+        <th class="px-5 py-3 font-semibold">Business</th>
+        <th class="px-5 py-3 font-semibold text-right">Offer</th>
+        <th class="px-5 py-3 font-semibold">Status</th>
+        <th class="px-5 py-3 font-semibold">Placed</th>
+        <th class="px-5 py-3 font-semibold">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for offer in offers %}
+      <tr class="hover:bg-slate-50/70">
+        <td class="px-5 py-4">
+          <a href="/listings/{{ offer.listing_id }}" class="font-semibold text-slate-900 hover:text-indigo-600">{{ offer.listing_title }}</a>
+          {% if offer.message %}
+          <p class="mt-0.5 text-xs text-slate-400 line-clamp-2">{{ offer.message }}</p>
+          {% endif %}
+        </td>
+        <td class="px-5 py-4 text-right font-semibold">
+          {{ offer.amount_display }}
+          {% if offer.is_letter_of_intent %}
+          <span class="mt-1 block text-xs font-semibold text-indigo-600">Letter of intent</span>
+          {% endif %}
+        </td>
+        <td class="px-5 py-4">
+          <span class="rounded-md px-2 py-1 text-xs font-semibold capitalize
+            {% if offer.status.value == 'pending' %} bg-amber-50 text-amber-700
+            {% elif offer.status.value == 'accepted' %} bg-emerald-50 text-emerald-700
+            {% elif offer.status.value == 'withdrawn' %} bg-slate-100 text-slate-500
+            {% else %} bg-rose-50 text-rose-700 {% endif %}">{{ offer.status.value }}</span>
+        </td>
+        <td class="px-5 py-4 text-slate-500">{{ offer.placed_ago }}</td>
+        <td class="px-5 py-4">
+          {% if offer.status.value == 'pending' %}
+          <form method="post" action="/offers/{{ offer.id }}/withdraw" onsubmit="return confirm('Withdraw this offer?');">
+            <button type="submit" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Withdraw</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="mt-6 rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
+  <p class="font-medium text-slate-700">No offers yet.</p>
+  <p class="mt-1 text-sm text-slate-400">Find a business and make your first offer.</p>
+  <a href="/listings" class="mt-5 inline-flex items-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">Browse listings</a>
+</div>
+{% endif %}
+{% endblock %}

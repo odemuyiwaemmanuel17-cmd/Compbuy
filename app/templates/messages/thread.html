@@ -1,0 +1,41 @@
+{% extends "base.html" %} {% block content %}
+<nav class="text-sm text-slate-500">
+  <a href="/messages" class="hover:text-slate-800">Messages</a>
+  <span class="mx-2 text-slate-300">/</span>
+  <span>{{ conversation.listing_title or 'Conversation' }}</span>
+</nav>
+
+<h1 class="mt-3 text-2xl font-bold tracking-tight">{{ conversation.listing_title or 'Negotiation thread' }}</h1>
+<p class="mt-1 text-sm text-slate-500">
+  With {{ conversation.counterparty_name(current_user.id) }}
+  {% if conversation.listing_id %}
+  &middot; <a class="font-medium text-indigo-600 hover:text-indigo-500" href="/listings/{{ conversation.listing_id }}">view listing</a>
+  {% endif %}
+</p>
+
+{% include "partials/banner.html" %}
+
+<section class="mt-6 rounded-xl border border-slate-200 bg-white">
+  <ul class="divide-y divide-slate-100">
+    {% for entry in messages %}
+    <li class="px-5 py-4 flex {% if entry.authored_by(current_user.id) %}justify-end{% endif %}">
+      <div class="max-w-2xl {% if entry.authored_by(current_user.id) %}text-right{% endif %}">
+        <p class="text-xs font-medium text-slate-400">{{ entry.author_label }} &middot; {{ entry.sent_ago }}</p>
+        <div class="mt-1 inline-block rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap
+          {% if entry.authored_by(current_user.id) %} bg-indigo-600 text-white {% else %} bg-slate-100 text-slate-800 {% endif %}">
+          {{ entry.body }}
+        </div>
+      </div>
+    </li>
+    {% else %}
+    <li class="px-5 py-10 text-center text-sm text-slate-500">No messages in this thread yet. Say something to start the negotiation.</li>
+    {% endfor %}
+  </ul>
+
+  <form method="post" action="/messages/{{ conversation.id }}/reply" class="border-t border-slate-100 p-4 flex flex-col sm:flex-row gap-3">
+    <label class="sr-only" for="body">Message</label>
+    <textarea id="body" name="body" rows="2" required maxlength="4000" placeholder="Write a message&hellip;" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"></textarea>
+    <button type="submit" class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-500 sm:self-end">Send</button>
+  </form>
+</section>
+{% endblock %}

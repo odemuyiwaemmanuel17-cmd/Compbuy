@@ -1,0 +1,129 @@
+{% extends "base.html" %} {% from "partials/macros.html" import errors_for with context %} {% block content %}
+{% set is_edit = editing is not none %} {% set form_action = ('/seller/listings/' ~ editing.id ~ '/edit') if is_edit else '/listings/new' %}
+{% set draft_action = 'draft_update' if is_edit else 'draft' %} {% set publish_action = 'publish_update' if is_edit else 'publish' %}
+
+<div class="max-w-3xl">
+  <nav class="text-sm text-slate-500">
+    <a href="/seller/listings" class="hover:text-slate-800">My listings</a>
+    <span class="mx-2 text-slate-300">/</span>
+    <span>{{ 'Edit' if is_edit else 'New' }}</span>
+  </nav>
+  <h1 class="mt-3 text-2xl font-bold tracking-tight">{{ 'Edit listing' if is_edit else 'List a business for sale' }}</h1>
+  <p class="mt-1 text-sm text-slate-500">
+    {% if is_edit %}
+    Current status: <span class="font-semibold capitalize">{{ editing.status.value }}</span>. Buyers only see published listings.
+    {% else %} Save a draft and publish when the numbers are ready. {% endif %}
+  </p>
+  <p class="mt-2 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
+    Buyers see your <span class="font-semibold">headline, category, location, asking price, and a coarse revenue band</span>.
+    Your legal business name, monthly revenue, net profit, and reason for selling stay in the private data room and are
+    released only after you approve a buyer and they sign the NDA.
+  </p>
+
+  {% include "partials/banner.html" %}
+
+  <form method="post" action="{{ form_action }}" class="mt-6 space-y-6">
+    <section class="rounded-xl border border-slate-200 bg-white p-6 space-y-5">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">The basics</h2>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="title">Headline</label>
+        <input id="title" name="title" type="text" required minlength="6" maxlength="120" value="{{ form.title or '' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Profitable SaaS for e-commerce sellers, $80K ARR" />
+        {{ errors_for('title') }}
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="business_name">Legal business name <span class="font-normal text-slate-400">data room only</span></label>
+        <input id="business_name" name="business_name" type="text" maxlength="120" value="{{ form.business_name or '' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Ledgerly Software Unipessoal Lda." />
+        {{ errors_for('business_name') }}
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="one_liner">One-line summary <span class="font-normal text-slate-400">optional</span></label>
+        <input id="one_liner" name="one_liner" type="text" maxlength="160" value="{{ form.one_liner or '' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        {{ errors_for('one_liner') }}
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="description">Full description <span class="font-normal text-slate-400">public</span></label>
+        <textarea id="description" name="description" rows="8" minlength="30" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="What you built, how it makes money, and what transfers to the buyer. Do not include the legal entity name or exact financials here &mdash; they are masked for everyone who has not signed the NDA.">{{ form.description or '' }}</textarea>
+        {{ errors_for('description') }}
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="reason_for_selling">Reason for selling <span class="font-normal text-slate-400">data room only</span></label>
+        <textarea id="reason_for_selling" name="reason_for_selling" rows="3" minlength="20" maxlength="4000" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Relocating and cannot run the company day to day.">{{ form.reason_for_selling or '' }}</textarea>
+        {{ errors_for('reason_for_selling') }}
+      </div>
+
+      <div class="grid gap-5 sm:grid-cols-3">
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="category">Category</label>
+          <select id="category" name="category" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            {% for value, label in CATEGORY_CHOICES %}
+            <option value="{{ value }}" {% if form.category == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          {{ errors_for('category') }}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="city">City <span class="font-normal text-slate-400">optional</span></label>
+          <input id="city" name="city" type="text" maxlength="60" value="{{ form.city or '' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+          {{ errors_for('city') }}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="country">Country <span class="font-normal text-slate-400">optional</span></label>
+          <input id="country" name="country" type="text" maxlength="60" value="{{ form.country or '' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+          {{ errors_for('country') }}
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-white p-6 space-y-5">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Financials</h2>
+      <p class="-mt-3 text-sm text-slate-500">Enter <span class="font-semibold">monthly</span> figures. Compbuy derives the annual numbers and the public revenue band for you.</p>
+      <div class="grid gap-5 sm:grid-cols-2">
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="asking_price">Asking price <span class="font-normal text-slate-400">public</span></label>
+          <input id="asking_price" name="asking_price" type="number" min="1" step="1000" required value="{{ form.asking_price or '' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+          {{ errors_for('asking_price') }}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="monthly_revenue">Monthly revenue <span class="font-normal text-slate-400">data room</span></label>
+          <input id="monthly_revenue" name="monthly_revenue" type="number" min="1" step="1000" required value="{{ form.monthly_revenue or '' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+          {{ errors_for('monthly_revenue') }}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="net_profit">Monthly net profit <span class="font-normal text-slate-400">data room, optional</span></label>
+          <input id="net_profit" name="net_profit" type="number" min="0" step="1000" value="{{ form.net_profit or '' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+          {{ errors_for('net_profit') }}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="established_year">Established <span class="font-normal text-slate-400">optional</span></label>
+          <input id="established_year" name="established_year" type="number" min="1900" max="2100" step="1" value="{{ form.established_year or '' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+          {{ errors_for('established_year') }}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="currency">Currency</label>
+          <select id="currency" name="currency" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            {% for code in ['USD', 'EUR', 'GBP'] %}
+            <option value="{{ code }}" {% if (form.currency or 'USD') == code %}selected{% endif %}>{{ code }}</option>
+            {% endfor %}
+          </select>
+          {{ errors_for('currency') }}
+        </div>
+      </div>
+    </section>
+
+    <div class="flex flex-wrap items-center gap-3">
+      <button type="submit" name="action" value="{{ draft_action }}" class="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+        {{ 'Save changes' if is_edit else 'Save draft' }}
+      </button>
+      <button type="submit" name="action" value="{{ publish_action }}" class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">
+        {{ 'Publish' if not editing or editing.status.value != 'published' else 'Update &amp; keep published' }}
+      </button>
+      <a href="/seller/listings" class="ml-auto text-sm font-medium text-slate-500 hover:text-slate-800">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
