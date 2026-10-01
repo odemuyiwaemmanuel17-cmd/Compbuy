@@ -183,6 +183,16 @@ at boot, every cold start would invalidate everyone's session. The app therefore
 `RuntimeError: SESSION_SECRET must be set in production` instead of starting with an
 ephemeral key.
 
+Vercel scopes variables per environment, and Production, Preview, and Development are
+three separate lists. A URL like `compbuy-5w77.vercel.app` is a **Preview** deployment, so
+saving a variable only under Production leaves preview without it. Tick every environment
+you deploy to, then **Redeploy** — an existing deployment keeps the environment it was
+created with.
+
+To separate a boot failure from a request failure, open `/healthz`. If that returns `500`
+too, the function never imported: the traceback under **View Logs** names the cause, and
+for a missing secret it is the `RuntimeError` above.
+
 Two platform notes worth knowing:
 
 - **Static files stay in the function.** `app/static/` would normally be promoted to the
