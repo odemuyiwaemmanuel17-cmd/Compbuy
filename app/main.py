@@ -15,10 +15,20 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import Settings, get_settings
-from app.db import Gateway, SupabaseGateway, set_gateway
+from app.database import Gateway, SupabaseGateway, set_gateway
 from app.errors import AppError
 from app.rendering import error_response, templates_for
-from app.routers import auth, buyer, dashboard, messages, offers, pages, seller
+from app.routers import (
+    auth,
+    buyer,
+    dashboard,
+    listings,
+    messages,
+    nda,
+    offers,
+    pages,
+    seller,
+)
 from app.templating import MarketplaceTemplates
 
 logger = logging.getLogger("compbuy")
@@ -131,7 +141,9 @@ def create_app(
 
     app.include_router(pages.router)
     app.include_router(auth.router)
+    app.include_router(listings.router)
     app.include_router(seller.router)
+    app.include_router(nda.router)
     app.include_router(offers.router)
     app.include_router(buyer.router)
     app.include_router(messages.router)
@@ -139,7 +151,7 @@ def create_app(
 
     @app.get("/healthz", response_class=JSONResponse, tags=["ops"])
     async def healthz():
-        from app.db import gateway_ready
+        from app.database import gateway_ready
 
         return {
             "status": "ok",

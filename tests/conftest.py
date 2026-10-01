@@ -15,15 +15,19 @@ DEMO_PASSWORD = "demo-password-123"
 
 VALID_LISTING = {
     "title": "Ledgerly bookkeeping SaaS",
+    "business_name": "Ledgerly Software Unipessoal Lda.",
     "one_liner": "480 paying customers, 91% retention",
     "description": (
         "Bootstrap-built accounting tool for freelancers. Full codebase, domain, "
         "customer list, and twelve months of financials transfer with the sale."
     ),
+    "reason_for_selling": (
+        "I am relocating to Brazil and can no longer run a Portuguese company day to day."
+    ),
     "category": "saas",
     "asking_price": "780000",
-    "annual_revenue": "240000",
-    "annual_profit": "96000",
+    "monthly_revenue": "20000",
+    "net_profit": "8000",
     "currency": "USD",
     "country": "Portugal",
     "city": "Lisbon",
@@ -47,7 +51,7 @@ def isolate_environment(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def gateway() -> Iterator[InMemoryGateway]:
     """In-memory gateway, installed for the duration of the test."""
-    from app.db import set_gateway
+    from app.database import set_gateway
 
     instance = InMemoryGateway()
     previous = set_gateway(instance)
@@ -110,7 +114,7 @@ def create_listing(session: TestClient, *, publish: bool = True, **overrides: st
     values = dict(VALID_LISTING)
     values.update({key: str(value) for key, value in overrides.items()})
     values["action"] = "publish" if publish else "draft"
-    response = session.post("/seller/listings/new", data=values, follow_redirects=False)
+    response = session.post("/listings/new", data=values, follow_redirects=False)
     assert response.status_code == 303, response.text
     location = response.headers["location"]
     # Redirect target is /seller/listings/{id}/edit

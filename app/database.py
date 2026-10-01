@@ -49,35 +49,35 @@ class QueryResult:
 class Query(Protocol):
     """Chainable, terminal-``execute()`` query builder."""
 
-    def select(self, columns: str = "*", *, count: str | None = None) -> "Query": ...
+    def select(self, columns: str = "*", *, count: str | None = None) -> Query: ...
 
-    def insert(self, values: dict[str, Any] | list[dict[str, Any]]) -> "Query": ...
+    def insert(self, values: dict[str, Any] | list[dict[str, Any]]) -> Query: ...
 
-    def upsert(self, values: dict[str, Any]) -> "Query": ...
+    def upsert(self, values: dict[str, Any]) -> Query: ...
 
-    def update(self, values: dict[str, Any]) -> "Query": ...
+    def update(self, values: dict[str, Any]) -> Query: ...
 
-    def delete(self) -> "Query": ...
+    def delete(self) -> Query: ...
 
-    def eq(self, column: str, value: Any) -> "Query": ...
+    def eq(self, column: str, value: Any) -> Query: ...
 
-    def neq(self, column: str, value: Any) -> "Query": ...
+    def neq(self, column: str, value: Any) -> Query: ...
 
-    def in_(self, column: str, values: Iterable[Any]) -> "Query": ...
+    def in_(self, column: str, values: Iterable[Any]) -> Query: ...
 
-    def gte(self, column: str, value: Any) -> "Query": ...
+    def gte(self, column: str, value: Any) -> Query: ...
 
-    def lte(self, column: str, value: Any) -> "Query": ...
+    def lte(self, column: str, value: Any) -> Query: ...
 
-    def ilike(self, column: str, pattern: str) -> "Query": ...
+    def ilike(self, column: str, pattern: str) -> Query: ...
 
-    def or_ilike(self, columns: Sequence[str], pattern: str) -> "Query": ...
+    def or_ilike(self, columns: Sequence[str], pattern: str) -> Query: ...
 
-    def order(self, column: str, *, descending: bool = False) -> "Query": ...
+    def order(self, column: str, *, descending: bool = False) -> Query: ...
 
-    def limit(self, amount: int) -> "Query": ...
+    def limit(self, amount: int) -> Query: ...
 
-    def range(self, start: int, end: int) -> "Query": ...
+    def range(self, start: int, end: int) -> Query: ...
 
     def execute(self) -> QueryResult: ...
 
@@ -125,72 +125,72 @@ class SupabaseQuery:
         self._builder = builder
         self._resource = resource
 
-    def select(self, columns: str = "*", *, count: str | None = None) -> "SupabaseQuery":
+    def select(self, columns: str = "*", *, count: str | None = None) -> SupabaseQuery:
         if count is None:
             self._builder = self._builder.select(columns)
         else:
             self._builder = self._builder.select(columns, count=count)  # type: ignore[arg-type]
         return self
 
-    def insert(self, values: dict[str, Any] | list[dict[str, Any]]) -> "SupabaseQuery":
+    def insert(self, values: dict[str, Any] | list[dict[str, Any]]) -> SupabaseQuery:
         self._builder = self._builder.insert(values)
         return self
 
-    def upsert(self, values: dict[str, Any], *, on_conflict: str | None = None) -> "SupabaseQuery":
+    def upsert(self, values: dict[str, Any], *, on_conflict: str | None = None) -> SupabaseQuery:
         if on_conflict is None:
             self._builder = self._builder.upsert(values)
         else:
             self._builder = self._builder.upsert(values, on_conflict=on_conflict)
         return self
 
-    def update(self, values: dict[str, Any]) -> "SupabaseQuery":
+    def update(self, values: dict[str, Any]) -> SupabaseQuery:
         self._builder = self._builder.update(values)
         return self
 
-    def delete(self) -> "SupabaseQuery":
+    def delete(self) -> SupabaseQuery:
         # ``supabase-py`` defaults to ``return=representation``, so the deleted
         # rows come back in ``data`` — matching the in-memory test gateway.
         self._builder = self._builder.delete()
         return self
 
-    def eq(self, column: str, value: Any) -> "SupabaseQuery":
+    def eq(self, column: str, value: Any) -> SupabaseQuery:
         self._builder = self._builder.eq(column, value)
         return self
 
-    def neq(self, column: str, value: Any) -> "SupabaseQuery":
+    def neq(self, column: str, value: Any) -> SupabaseQuery:
         self._builder = self._builder.neq(column, value)
         return self
 
-    def in_(self, column: str, values: Iterable[Any]) -> "SupabaseQuery":
+    def in_(self, column: str, values: Iterable[Any]) -> SupabaseQuery:
         self._builder = self._builder.in_(column, list(values))
         return self
 
-    def gte(self, column: str, value: Any) -> "SupabaseQuery":
+    def gte(self, column: str, value: Any) -> SupabaseQuery:
         self._builder = self._builder.gte(column, value)
         return self
 
-    def lte(self, column: str, value: Any) -> "SupabaseQuery":
+    def lte(self, column: str, value: Any) -> SupabaseQuery:
         self._builder = self._builder.lte(column, value)
         return self
 
-    def ilike(self, column: str, pattern: str) -> "SupabaseQuery":
+    def ilike(self, column: str, pattern: str) -> SupabaseQuery:
         self._builder = self._builder.ilike(column, pattern)
         return self
 
-    def or_ilike(self, columns: Sequence[str], pattern: str) -> "SupabaseQuery":
+    def or_ilike(self, columns: Sequence[str], pattern: str) -> SupabaseQuery:
         clauses = ",".join(f"{column}.ilike.{pattern}" for column in columns)
         self._builder = self._builder.or_(clauses)
         return self
 
-    def order(self, column: str, *, descending: bool = False) -> "SupabaseQuery":
+    def order(self, column: str, *, descending: bool = False) -> SupabaseQuery:
         self._builder = self._builder.order(column, desc=descending)
         return self
 
-    def limit(self, amount: int) -> "SupabaseQuery":
+    def limit(self, amount: int) -> SupabaseQuery:
         self._builder = self._builder.limit(amount)
         return self
 
-    def range(self, start: int, end: int) -> "SupabaseQuery":
+    def range(self, start: int, end: int) -> SupabaseQuery:
         self._builder = self._builder.range(start, end)
         return self
 
@@ -375,8 +375,8 @@ __all__ = [
     "Query",
     "QueryResult",
     "SupabaseGateway",
-    "get_gateway",
     "gateway_ready",
+    "get_gateway",
     "run_in_thread",
     "run_query",
     "set_gateway",

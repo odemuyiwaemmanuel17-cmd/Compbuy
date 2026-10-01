@@ -84,7 +84,7 @@ class Settings:
     def is_production(self) -> bool:
         return self.environment.lower() in {"production", "prod", "staging"}
 
-    def with_overrides(self, **changes: object) -> "Settings":
+    def with_overrides(self, **changes: object) -> Settings:
         return replace(self, **changes)  # type: ignore[arg-type]
 
     def warning_list(self) -> list[str]:

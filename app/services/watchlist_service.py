@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.db import run_query
+from app.database import run_query
 from app.services.base import BaseService
 from app.services.listing_service import ListingService
 

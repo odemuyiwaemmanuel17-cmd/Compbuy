@@ -10,6 +10,7 @@
       {% if current_user %}
       <a href="/seller/listings" class="px-3 py-2 rounded-lg {{ 'bg-slate-100 text-slate-900' if current_path.startswith('/seller') else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">Sell</a>
       <a href="/buyer/offers" class="px-3 py-2 rounded-lg {{ 'bg-slate-100 text-slate-900' if current_path.startswith('/buyer') else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">Offers</a>
+      <a href="/buyer/access" class="px-3 py-2 rounded-lg {{ 'bg-slate-100 text-slate-900' if current_path.startswith('/buyer/access') else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">Data room</a>
       <a href="/messages" class="px-3 py-2 rounded-lg {{ 'bg-slate-100 text-slate-900' if current_path.startswith('/messages') else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">Messages</a>
       {% endif %}
     </div>

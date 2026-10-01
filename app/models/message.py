@@ -20,7 +20,7 @@ class Message:
     sender_name: str = ""
 
     @classmethod
-    def from_row(cls, row: dict[str, Any]) -> "Message":
+    def from_row(cls, row: dict[str, Any]) -> Message:
         sender = row.get("sender") if isinstance(row.get("sender"), dict) else {}
         return cls(
             id=as_str(row.get("id")),
@@ -58,7 +58,7 @@ class Conversation:
     message_count: int = 0
 
     @classmethod
-    def from_row(cls, row: dict[str, Any]) -> "Conversation":
+    def from_row(cls, row: dict[str, Any]) -> Conversation:
         listing = row.get("listing") if isinstance(row.get("listing"), dict) else {}
         buyer = row.get("buyer") if isinstance(row.get("buyer"), dict) else {}
         seller = row.get("seller") if isinstance(row.get("seller"), dict) else {}

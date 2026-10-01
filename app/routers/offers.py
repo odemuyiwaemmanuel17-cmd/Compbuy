@@ -28,9 +28,10 @@ async def submit_offer(
     messages: MessageServiceDep,
     amount: str = Form(""),
     message: str = Form(""),
+    kind: str = Form("offer"),
 ):
     try:
-        data = OfferCreate.model_validate({"amount": amount, "message": message})
+        data = OfferCreate.model_validate({"amount": amount, "message": message, "kind": kind})
     except PydanticValidationError as exc:
         errors = field_errors(exc)
         detail = "; ".join(next(iter(items)) for items in errors.values() if items) or "Enter a valid amount."
@@ -44,7 +45,11 @@ async def submit_offer(
     # Open (or reuse) the negotiation thread so both parties can discuss terms.
     await messages.open_or_get(listing, user.id)
 
-    flash(request, f"Offer of {offer.amount_display} sent to the seller.", category="success")
+    flash(
+        request,
+        f"{offer.kind_label} of {offer.amount_display} sent to the seller.",
+        category="success",
+    )
     return RedirectResponse("/buyer/offers", status_code=303)
 
 

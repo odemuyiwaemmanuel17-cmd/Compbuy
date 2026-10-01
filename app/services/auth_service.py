@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import contextlib
 
-from app.db import AuthSession, run_in_thread, run_query, translate_supabase_error
+from app.database import AuthSession, run_in_thread, run_query, translate_supabase_error
 from app.errors import AppError, ExternalServiceError
 from app.models.user import User
 from app.services.base import BaseService
@@ -66,7 +66,7 @@ class AuthService(BaseService):
         values = {"id": user_id, "email": email, "display_name": clean_name or email.split("@")[0]}
         try:
             await run_query(self.gateway.table("profiles").upsert(values))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise ExternalServiceError(
                 "We could not prepare your marketplace profile. Please try again."
             ) from exc

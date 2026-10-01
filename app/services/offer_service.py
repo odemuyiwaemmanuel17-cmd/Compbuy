@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.db import run_query
+from app.database import run_query
 from app.errors import ConflictError, NotFoundError, PermissionDeniedError
 from app.models.enums import OfferStatus
 from app.models.listing import Listing

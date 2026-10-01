@@ -6,17 +6,19 @@ ownership by ``seller_id`` here before touching the row.
 
 from __future__ import annotations
 
-from app.db import Query, run_query
+from app.database import Query, run_query
 from app.errors import ConflictError, NotFoundError, PermissionDeniedError
 from app.models.enums import ListingStatus
 from app.models.listing import Listing
 from app.schemas.listing import ListingCreate, ListingFilters, ListingUpdate
 from app.services.base import BaseService
+from app.utils.parsing import as_str
 
 LISTING_COLUMNS = (
-    "id, seller_id, title, one_liner, description, category, asking_price, "
-    "annual_revenue, annual_profit, currency, country, city, established_year, "
-    "status, image_urls, created_at, updated_at"
+    "id, seller_id, title, business_name, one_liner, description, reason_for_selling, "
+    "category, asking_price, monthly_revenue, net_profit, annual_revenue, annual_profit, "
+    "revenue_band, currency, country, city, established_year, status, image_urls, "
+    "created_at, updated_at"
 )
 
 _SORT_COLUMNS: dict[str, tuple[str, bool]] = {
@@ -50,7 +52,7 @@ class ListingService(BaseService):
         listing = await self.get_by_id(listing_id)
         if not listing.editable_by(user_id):
             raise PermissionDeniedError("You can only manage your own listings.")
-        return listing
+        return listing.unlocked_for(True)
 
     async def search(self, filters: ListingFilters) -> tuple[list[Listing], int]:
         query = self.gateway.table("listings").select(LISTING_COLUMNS, count="exact")
@@ -68,7 +70,17 @@ class ListingService(BaseService):
             .eq("seller_id", seller_id)
             .order("created_at", descending=True)
         )
-        return [Listing.from_row(row) for row in result.rows]
+        # Every row here belongs to the seller, so the data room is always open.
+        return [Listing.from_row(row).unlocked_for(True) for row in result.rows]
+
+    async def titles_by_ids(self, listing_ids: list[str]) -> dict[str, str]:
+        """Headline titles for labelling related records; unpublished included."""
+        if not listing_ids:
+            return {}
+        result = await run_query(
+            self.gateway.table("listings").select("id, title").in_("id", listing_ids)
+        )
+        return {str(row["id"]): as_str(row.get("title")) for row in result.rows if row.get("id")}
 
     async def published_by_ids(self, listing_ids: list[str]) -> list[Listing]:
         """Featured listings for the home page, preserving the requested order."""
@@ -154,6 +166,6 @@ def apply_filters(query: Query, filters: ListingFilters) -> Query:
         query = query.gte("asking_price", filters.min_price)
     if filters.max_price is not None:
         query = query.lte("asking_price", filters.max_price)
-    if filters.revenue_min is not None:
-        query = query.gte("annual_revenue", filters.revenue_min)
+    if filters.min_band:
+        query = query.in_("revenue_band", filters.band_floor_values)
     return query

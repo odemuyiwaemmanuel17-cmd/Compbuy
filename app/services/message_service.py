@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from app.db import run_query
+from app.database import run_query
 from app.errors import NotFoundError, PermissionDeniedError
 from app.models.listing import Listing
 from app.models.message import Conversation, Message

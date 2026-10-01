@@ -4,14 +4,19 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
+from pydantic import ValidationError as PydanticValidationError
 
 from app.dependencies import AuthServiceDep, CurrentUserDep, SettingsDep
 from app.errors import AppError
 from app.rendering import render, render_form_error, safe_next
 from app.schemas.auth import LoginForm, RegisterForm
-from app.session_store import flash, is_signed_in, session_access_token, store_auth_session
+from app.session_store import (
+    flash,
+    is_signed_in,
+    session_access_token,
+    store_auth_session,
+)
 from app.utils.validation import field_errors
-from pydantic import ValidationError as PydanticValidationError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -123,7 +128,7 @@ async def register_submit(
 
     store_auth_session(request, session)
     flash(request, "Your account is ready. Publish your first listing to start selling.", category="success")
-    return RedirectResponse(safe_next(next) if next else "/seller/listings/new", status_code=303)
+    return RedirectResponse(safe_next(next) if next else "/listings/new", status_code=303)
 
 
 @router.post("/logout")

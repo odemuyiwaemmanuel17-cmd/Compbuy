@@ -36,9 +36,15 @@
       </div>
 
       <div>
-        <label class="block text-xs font-medium uppercase tracking-wide text-slate-500" for="revenue_min">Min annual revenue</label>
-        <input id="revenue_min" name="revenue_min" type="number" min="0" step="10000" value="{{ filters.revenue_min or '' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
-        {{ errors_for('revenue_min') }}
+        <label class="block text-xs font-medium uppercase tracking-wide text-slate-500" for="min_band">Minimum revenue band</label>
+        <select id="min_band" name="min_band" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+          <option value="">Any revenue</option>
+          {% for value, label in BAND_FLOOR_CHOICES %}
+          <option value="{{ value }}" {% if filters.min_band == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <p class="mt-1 text-xs text-slate-400">Exact revenue is only shared after an NDA is signed, so this filters on the public band.</p>
+        {{ errors_for('min_band') }}
       </div>
 
       <div>

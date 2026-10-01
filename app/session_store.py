@@ -12,7 +12,7 @@ from typing import Any, TypedDict
 
 from starlette.requests import Request
 
-from app.db import AuthSession
+from app.database import AuthSession
 
 USER_ID_KEY = "user_id"
 USER_EMAIL_KEY = "user_email"

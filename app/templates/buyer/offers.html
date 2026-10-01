@@ -25,7 +25,12 @@
           <p class="mt-0.5 text-xs text-slate-400 line-clamp-2">{{ offer.message }}</p>
           {% endif %}
         </td>
-        <td class="px-5 py-4 text-right font-semibold">{{ offer.amount_display }}</td>
+        <td class="px-5 py-4 text-right font-semibold">
+          {{ offer.amount_display }}
+          {% if offer.is_letter_of_intent %}
+          <span class="mt-1 block text-xs font-semibold text-indigo-600">Letter of intent</span>
+          {% endif %}
+        </td>
         <td class="px-5 py-4">
           <span class="rounded-md px-2 py-1 text-xs font-semibold capitalize
             {% if offer.status.value == 'pending' %} bg-amber-50 text-amber-700

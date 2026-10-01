@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.db import Gateway, get_gateway
+from app.database import Gateway, get_gateway
 
 
 class BaseService:

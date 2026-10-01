@@ -4,7 +4,12 @@
     <h1 class="text-2xl font-bold tracking-tight">My listings</h1>
     <p class="mt-1 text-sm text-slate-500">{{ listings|length }} total &middot; {{ published_count }} published</p>
   </div>
-  <a href="/seller/listings/new" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">List a business</a>
+  <div class="flex items-center gap-3">
+    <a href="/seller/data-room" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+      Data-room requests{% if pending_requests %} <span class="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">{{ pending_requests }}</span>{% endif %}
+    </a>
+    <a href="/listings/new" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">List a business</a>
+  </div>
 </div>
 
 {% include "partials/banner.html" %}
@@ -36,7 +41,7 @@
             {% else %} bg-amber-50 text-amber-700 {% endif %}">{{ listing.status.value }}</span>
         </td>
         <td class="px-5 py-4 text-right font-semibold">{{ listing.price_display }}</td>
-        <td class="px-5 py-4 text-right text-slate-600">{{ listing.revenue_display_compact }}</td>
+        <td class="px-5 py-4 text-right text-slate-600">{{ listing.annual_revenue_display_compact }}</td>
         <td class="px-5 py-4">
           <div class="flex flex-wrap items-center gap-2">
             <a href="/seller/listings/{{ listing.id }}/edit" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Edit</a>
@@ -74,7 +79,7 @@
 <div class="mt-6 rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
   <p class="font-medium text-slate-700">You have not listed a business yet.</p>
   <p class="mt-1 text-sm text-slate-400">Publish your first listing to start receiving offers.</p>
-  <a href="/seller/listings/new" class="mt-5 inline-flex items-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">List a business</a>
+  <a href="/listings/new" class="mt-5 inline-flex items-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">List a business</a>
 </div>
 {% endif %}
 {% endblock %}

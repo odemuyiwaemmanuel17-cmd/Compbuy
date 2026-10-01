@@ -9,18 +9,14 @@
   </h3>
   <p class="mt-1 text-sm text-slate-500 line-clamp-2">{{ listing.summary }}</p>
 
-  <dl class="mt-4 grid grid-cols-3 gap-2 text-sm">
+  <dl class="mt-4 grid grid-cols-2 gap-2 text-sm">
     <div>
       <dt class="text-xs text-slate-400">Asking</dt>
       <dd class="font-semibold text-slate-900">{{ listing.price_display_compact }}</dd>
     </div>
     <div>
       <dt class="text-xs text-slate-400">Revenue</dt>
-      <dd class="font-semibold text-slate-900">{{ listing.revenue_display_compact }}</dd>
-    </div>
-    <div>
-      <dt class="text-xs text-slate-400">Multiple</dt>
-      <dd class="font-semibold text-slate-900">{{ listing.revenue_multiple }}</dd>
+      <dd class="font-semibold text-slate-900">{{ listing.revenue_band_label }}</dd>
     </div>
   </dl>
 

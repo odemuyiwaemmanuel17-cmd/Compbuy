@@ -13,7 +13,7 @@ def _seed_catalogue(seller, buyer) -> dict[str, str]:
             title="Ledgerly bookkeeping SaaS",
             category="saas",
             asking_price="780000",
-            annual_revenue="240000",
+            monthly_revenue="30000",
             description="Accounting tool for freelancers with strong retention numbers.",
         ),
         "saas_small": create_listing(
@@ -21,7 +21,7 @@ def _seed_catalogue(seller, buyer) -> dict[str, str]:
             title="RetainIQ churn analytics",
             category="saas",
             asking_price="180000",
-            annual_revenue="64000",
+            monthly_revenue="5300",
             description="Django analytics for subscription box operators.",
         ),
         "content": create_listing(
@@ -29,7 +29,7 @@ def _seed_catalogue(seller, buyer) -> dict[str, str]:
             title="Northwind content portfolio",
             category="content",
             asking_price="265000",
-            annual_revenue="118000",
+            monthly_revenue="9800",
             description="Three content sites monetised through display advertising.",
         ),
         "ecommerce": create_listing(
@@ -37,7 +37,7 @@ def _seed_catalogue(seller, buyer) -> dict[str, str]:
             title="Kettle and Co coffee roaster",
             category="ecommerce",
             asking_price="310000",
-            annual_revenue="145000",
+            monthly_revenue="12000",
             description="Subscription-led coffee ecommerce brand with a roastery contract.",
         ),
     }
@@ -99,12 +99,35 @@ def test_search_is_combined_across_every_predicate(app, client, seller, buyer) -
     assert "1 result" in response.text
 
 
-def test_revenue_floor_filters_the_catalogue(app, client, seller, buyer) -> None:
+def test_revenue_band_floor_filters_the_catalogue(app, client, seller, buyer) -> None:
+    """AC-2: the public floor filters the coarse band, never the gated figure."""
     ids = _seed_catalogue(seller, buyer)
 
-    response = client.get("/listings", params={"revenue_min": "150000"})
+    response = client.get("/listings", params={"min_band": "250k_to_1m"})
     assert ids["saas_big"] in response.text
     assert ids["content"] not in response.text
+
+    everything = client.get("/listings", params={"min_band": "under_250k"})
+    for key, listing_id in ids.items():
+        assert listing_id in everything.text, key
+
+    assert client.get("/listings", params={"min_band": "over_5m"}).text.count("0 result") == 1
+
+
+def test_exact_revenue_floor_is_not_a_supported_filter(app, client, seller) -> None:
+    """A numeric revenue floor would let visitors bisect a gated figure."""
+    create_listing(seller)
+
+    response = client.get("/listings", params={"revenue_min": "150000"})
+    assert response.status_code == 200
+    assert "1 result" in response.text
+    assert "$20,000" not in response.text
+
+
+def test_unknown_revenue_band_is_reported(app, client, seller) -> None:
+    create_listing(seller)
+    response = client.get("/listings", params={"min_band": "plausible"})
+    assert response.status_code == 422
 
 
 def test_sorting_by_price_both_directions(app, client, seller, buyer) -> None:

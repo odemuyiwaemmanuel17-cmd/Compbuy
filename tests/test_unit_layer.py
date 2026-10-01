@@ -21,7 +21,6 @@ from app.utils.formatting import format_money, format_ratio, time_ago, truncate
 from app.utils.parsing import as_datetime, as_int, as_opt_int, as_str_list
 from app.utils.validation import field_errors
 
-
 # ------------------------------------------------------------------ formatting
 
 def test_format_money_compact_abbreviates_large_values() -> None:
@@ -105,10 +104,15 @@ def test_listing_from_row_maps_status_and_display_fields() -> None:
             "id": "l1",
             "seller_id": "s1",
             "title": "Ledgerly",
+            "business_name": "Ledgerly Software Unipessoal Lda.",
             "category": "saas",
             "asking_price": 780000,
+            "monthly_revenue": 20000,
+            "net_profit": 8000,
             "annual_revenue": 240000,
             "annual_profit": 96000,
+            "reason_for_selling": "Relocating to another country.",
+            "revenue_band": "under_250k",
             "status": "published",
             "city": "Lisbon",
             "country": "Portugal",
@@ -116,12 +120,27 @@ def test_listing_from_row_maps_status_and_display_fields() -> None:
     )
     assert listing.status is ListingStatus.PUBLISHED
     assert listing.is_published
-    assert listing.revenue_multiple == "3.2x"
-    assert listing.profit_margin == "40%"
     assert listing.location == "Lisbon, Portugal"
     assert listing.category_label == "SaaS"
     assert listing.editable_by("s1")
     assert not listing.editable_by("other")
+
+    # Gated until an NDA unlocks the data room.
+    locked = listing.unlocked_for(False)
+    assert locked.revenue_multiple == "Members only"
+    assert locked.monthly_revenue_display == "Members only"
+    assert locked.net_profit_display == "Members only"
+    assert locked.profit_margin == "Members only"
+    assert locked.reason_for_selling_display == "Members only"
+    assert locked.display_name == "Ledgerly"
+    assert locked.revenue_band_label == "Under $250K / yr"
+
+    unlocked = listing.unlocked_for(True)
+    assert unlocked.revenue_multiple == "3.2x"
+    assert unlocked.profit_margin == "40%"
+    assert unlocked.monthly_revenue_display == "$20,000"
+    assert unlocked.net_profit_display == "$8,000"
+    assert unlocked.display_name == "Ledgerly Software Unipessoal Lda."
 
 
 def test_listing_from_row_survives_unknown_and_missing_status() -> None:
@@ -129,7 +148,8 @@ def test_listing_from_row_survives_unknown_and_missing_status() -> None:
     assert listing.status is ListingStatus.DRAFT
     assert listing.asking_price == 0
     assert not listing.is_published
-    assert listing.profit_margin == "—"
+    assert listing.profit_margin == "Members only"
+    assert listing.unlocked_for(True).profit_margin == "—"
 
 
 def test_offer_from_row_and_decision_helpers() -> None:
@@ -230,23 +250,34 @@ def test_listing_create_rejects_non_positive_price_and_short_title() -> None:
     base = {
         "title": "A valid listing title",
         "description": "Long enough description to satisfy the minimum length rule.",
+        "reason_for_selling": "Relocating and cannot run it day to day.",
         "asking_price": 1,
-        "annual_revenue": 0,
+        "monthly_revenue": 1,
     }
     ListingCreate.model_validate(base)
 
-    for broken in ({"asking_price": 0}, {"asking_price": -5}, {"title": "tiny"}, {"description": "short"}):
+    for broken in (
+        {"asking_price": 0},
+        {"asking_price": -5},
+        {"monthly_revenue": 0},
+        {"net_profit": -1},
+        {"title": "tiny"},
+        {"description": "short"},
+        {"reason_for_selling": "short"},
+    ):
         with pytest.raises(PydanticValidationError):
             ListingCreate.model_validate({**base, **broken})
 
 
-def test_listing_create_values_pin_seller_and_status() -> None:
+def test_listing_create_values_pin_seller_and_derive_annuals() -> None:
     values = ListingCreate.model_validate(
         {
             "title": "A valid listing title",
             "description": "Long enough description to satisfy the minimum length rule.",
+            "reason_for_selling": "Relocating and cannot run it day to day.",
             "asking_price": 150000,
-            "annual_revenue": 60000,
+            "monthly_revenue": 5000,
+            "net_profit": 2000,
             "category": "saas",
         }
     ).to_values(seller_id="s1", status=ListingStatus.PUBLISHED)
@@ -254,7 +285,26 @@ def test_listing_create_values_pin_seller_and_status() -> None:
     assert values["seller_id"] == "s1"
     assert values["status"] == "published"
     assert values["category"] == "saas"
+    # Annuals and the public band are server-derived from the monthly inputs.
+    assert values["annual_revenue"] == 60000
+    assert values["annual_profit"] == 24000
+    assert values["revenue_band"] == "under_250k"
+
+
+def test_listing_create_leaves_annual_profit_unset_without_net_profit() -> None:
+    values = ListingCreate.model_validate(
+        {
+            "title": "A valid listing title",
+            "description": "Long enough description to satisfy the minimum length rule.",
+            "reason_for_selling": "Relocating and cannot run it day to day.",
+            "asking_price": 150000,
+            "monthly_revenue": 300000,
+        }
+    ).to_values(seller_id="s1", status=ListingStatus.PUBLISHED)
+
+    assert values["annual_revenue"] == 3600000
     assert values["annual_profit"] is None
+    assert values["revenue_band"] == "1m_to_5m"
 
 
 def test_listing_create_uppercases_currency_and_strips_text() -> None:
@@ -262,8 +312,9 @@ def test_listing_create_uppercases_currency_and_strips_text() -> None:
         {
             "title": "  Padded title here  ",
             "description": "Description text that is comfortably long enough.",
+            "reason_for_selling": "  Relocating and cannot run it day to day.  ",
             "asking_price": 90000,
-            "annual_revenue": 10000,
+            "monthly_revenue": 4000,
             "currency": "eur",
             "city": "  Porto ",
         }
@@ -271,20 +322,23 @@ def test_listing_create_uppercases_currency_and_strips_text() -> None:
     assert created.title == "Padded title here"
     assert created.city == "Porto"
     assert created.currency == "EUR"
+    assert created.reason_for_selling == "Relocating and cannot run it day to day."
 
 
 def test_established_year_upper_bound_tracks_this_year() -> None:
     ceiling = datetime.now(timezone.utc).year + 2
-    with pytest.raises(PydanticValidationError):
+    with pytest.raises(PydanticValidationError) as excinfo:
         ListingCreate.model_validate(
             {
                 "title": "Valid title here",
                 "description": "Description text that is comfortably long enough.",
+                "reason_for_selling": "Relocating and cannot run it day to day.",
                 "asking_price": 100,
-                "annual_revenue": 10,
+                "monthly_revenue": 10,
                 "established_year": ceiling,
             }
         )
+    assert "established_year" in str(excinfo.value)
 
 
 # ---------------------------------------------------------------- open redirect

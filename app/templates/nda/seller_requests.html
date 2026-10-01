@@ -1,0 +1,100 @@
+{% extends "base.html" %} {% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight">Data-room requests</h1>
+    <p class="mt-1 text-sm text-slate-500">
+      {{ pending|length }} awaiting your decision &middot; {{ granted|length }} with access &middot; {{ closed|length }} closed
+    </p>
+  </div>
+  <a href="/seller/listings" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">My listings</a>
+</div>
+
+{% include "partials/banner.html" %}
+
+<p class="mt-4 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
+  Approving a request does not open the figures. The buyer still has to sign, and the data room only unlocks on a
+  <span class="font-semibold">signed</span> agreement. Signing is recorded with the buyer&rsquo;s name and timestamp.
+</p>
+
+{% macro request_row(item) %}
+<tr class="hover:bg-slate-50/70">
+  <td class="px-5 py-4">
+    <a href="/listings/{{ item.listing_id }}" class="font-semibold text-slate-900 hover:text-indigo-600">{{ item.listing_title or 'Your listing' }}</a>
+    <p class="mt-0.5 text-xs text-slate-400">
+      {{ item.buyer_name or 'A buyer' }} requested {{ item.requested_ago }}{% if item.signed_ago %} &middot; signed {{ item.signed_ago }}{% endif %}
+    </p>
+    {% if item.message %}
+    <p class="mt-2 max-w-prose text-sm text-slate-600">&ldquo;{{ item.message }}&rdquo;</p>
+    {% endif %}
+    {% if item.signed_name %}
+    <p class="mt-1 text-xs font-medium text-emerald-700">Signed as {{ item.signed_name }}</p>
+    {% endif %}
+  </td>
+  <td class="px-5 py-4">
+    <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold
+      {% if item.status.value == 'signed' %} bg-emerald-50 text-emerald-700
+      {% elif item.status.value == 'approved' %} bg-sky-50 text-sky-700
+      {% elif item.status.value == 'pending' %} bg-amber-50 text-amber-800
+      {% else %} bg-slate-100 text-slate-600 {% endif %}">{{ item.status_label }}</span>
+  </td>
+  <td class="px-5 py-4">
+    <div class="flex flex-wrap items-center justify-end gap-2">
+      {% if item.status.value == 'pending' %}
+      <form method="post" action="/nda/{{ item.id }}/approve">
+        <button type="submit" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500">Approve</button>
+      </form>
+      <form method="post" action="/nda/{{ item.id }}/decline">
+        <button type="submit" class="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">Decline</button>
+      </form>
+      {% endif %}
+      <a href="/listings/{{ item.listing_id }}" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+        {{ 'View listing' if item.status.value == 'approved' else 'Open listing' }}
+      </a>
+    </div>
+  </td>
+</tr>
+{% endmacro %}
+
+<section class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white">
+  <h2 class="border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+    Awaiting your decision
+  </h2>
+  {% if pending %}
+  <table class="w-full text-left text-sm">
+    <tbody class="divide-y divide-slate-100 align-middle">
+      {% for item in pending %}{{ request_row(item) }}{% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="px-5 py-8 text-center text-sm text-slate-400">No new requests. Buyers see your confidential figures only after they sign.</p>
+  {% endif %}
+</section>
+
+<section class="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
+  <h2 class="border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+    Granted access
+  </h2>
+  {% if granted %}
+  <table class="w-full text-left text-sm">
+    <tbody class="divide-y divide-slate-100 align-middle">
+      {% for item in granted %}{{ request_row(item) }}{% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="px-5 py-8 text-center text-sm text-slate-400">Nobody has an open data-room agreement yet.</p>
+  {% endif %}
+</section>
+
+{% if closed %}
+<section class="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
+  <h2 class="border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+    Closed
+  </h2>
+  <table class="w-full text-left text-sm">
+    <tbody class="divide-y divide-slate-100 align-middle">
+      {% for item in closed %}{{ request_row(item) }}{% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

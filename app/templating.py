@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi.templating import Jinja2Templates
 
 from app.config import Settings
-from app.models.enums import CATEGORY_CHOICES, ListingStatus
+from app.models.enums import BAND_FLOOR_CHOICES, CATEGORY_CHOICES, ListingStatus
 from app.utils.formatting import format_money, format_number, time_ago, truncate
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -20,6 +20,7 @@ class MarketplaceTemplates(Jinja2Templates):
         self.env.globals.update(
             SITE_NAME=settings.site_name,
             CATEGORY_CHOICES=CATEGORY_CHOICES,
+            BAND_FLOOR_CHOICES=BAND_FLOOR_CHOICES,
             LISTING_STATUS_CHOICES=[(s.value, s.value.capitalize()) for s in ListingStatus],
             format_money=format_money,
             format_number=format_number,

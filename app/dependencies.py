@@ -7,12 +7,13 @@ from typing import Annotated
 from fastapi import Depends, Request
 
 from app.config import Settings
-from app.db import Gateway, get_gateway
+from app.database import Gateway, get_gateway
 from app.errors import AuthenticationError
 from app.models.user import User
 from app.services.auth_service import AuthService
 from app.services.listing_service import ListingService
 from app.services.message_service import MessageService
+from app.services.nda_service import NdaService
 from app.services.offer_service import OfferService
 from app.services.watchlist_service import WatchlistService
 from app.session_store import session_user_id
@@ -54,11 +55,16 @@ def auth_service_dep(gateway: GatewayDep) -> AuthService:
     return AuthService(gateway)
 
 
+def nda_service_dep(gateway: GatewayDep) -> NdaService:
+    return NdaService(gateway)
+
+
 ListingServiceDep = Annotated[ListingService, Depends(listing_service_dep)]
 OfferServiceDep = Annotated[OfferService, Depends(offer_service_dep)]
 MessageServiceDep = Annotated[MessageService, Depends(message_service_dep)]
 WatchlistServiceDep = Annotated[WatchlistService, Depends(watchlist_service_dep)]
 AuthServiceDep = Annotated[AuthService, Depends(auth_service_dep)]
+NdaServiceDep = Annotated[NdaService, Depends(nda_service_dep)]
 
 
 async def optional_user(request: Request, auth: AuthServiceDep) -> User | None:

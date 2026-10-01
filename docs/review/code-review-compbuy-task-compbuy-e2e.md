@@ -17,7 +17,7 @@
 
 ## Summary
 
-The architecture is sound: one integration seam (`app/db.py`), protocol-based gateway, service-layer
+The architecture is sound: one integration seam (`app/database.py`), protocol-based gateway, service-layer
 authorization, autoescaping templates, and a schema whose constraints mirror the Python validation.
 The review found **two high-impact defects, both now fixed and covered by new tests**, plus several
 medium items and two design-level risks that need a product decision rather than a code change.
@@ -26,10 +26,10 @@ medium items and two design-level risks that need a product decision rather than
 
 | # | File | Issue | Severity | Status |
 |---|------|-------|----------|--------|
-| 1 | `app/db.py` `SupabaseQuery.execute` | PostgREST raises raw exceptions for constraint violations, RLS denials and outages. Nothing on the **data plane** translated them (translation existed only for auth), so a duplicate-key write surfaced as an unhandled HTTP 500. | 🔴 Critical | ✅ **Fixed** — `execute()` now catches and maps through `translate_supabase_error`, keyed by a table→noun map so messages name the resource (409/404/502). 3 new tests. |
+| 1 | `app/database.py` `SupabaseQuery.execute` | PostgREST raises raw exceptions for constraint violations, RLS denials and outages. Nothing on the **data plane** translated them (translation existed only for auth), so a duplicate-key write surfaced as an unhandled HTTP 500. | 🔴 Critical | ✅ **Fixed** — `execute()` now catches and maps through `translate_supabase_error`, keyed by a table→noun map so messages name the resource (409/404/502). 3 new tests. |
 | 2 | `app/routers/{offers,buyer,messages,seller}.py` | Every POST wrapped its service call in `except AppError` → flash + `303`. That silently converted **authorization failures into successful-looking redirects**: offering on your own listing, touching another member's listing/thread, and double-accept all returned 303 instead of 403/404/409. | 🔴 Critical | ✅ **Fixed** — policy now: resource-level failures propagate with their status; only *input formatting* problems flash and redirect. 6 tests drove the change (they expected 403/404/409 and failed before the fix). |
 | 3 | `app/session_store.py`, `app/main.py` | Identity is derived from the app's own signed cookie for up to `SESSION_MAX_AGE_SECONDS` (7 days default). A Supabase-side sign-out, password change, or user disable is **not observed** until the cookie expires; there is no refresh/revalidation path. | 🟠 High | ⏸ **Needs decision** — see Design Risks. A `verify_token` method existed as a vestige of this design but was unreachable; it has been removed rather than left as misleading dead code. |
-| 4 | `app/db.py` `SupabaseGateway.__init__` | When `SUPABASE_SERVICE_ROLE_KEY` is set, all reads/writes bypass RLS, so Python-side ownership filtering is the only control on the data plane. RLS still protects anon-key clients, and every mutation carries an owner predicate (`eq("seller_id", user_id)`), but a future query that forgets one filter would leak across accounts with no database-level stop. | 🟠 High | ⏸ **Needs decision** — see Design Risks. |
+| 4 | `app/database.py` `SupabaseGateway.__init__` | When `SUPABASE_SERVICE_ROLE_KEY` is set, all reads/writes bypass RLS, so Python-side ownership filtering is the only control on the data plane. RLS still protects anon-key clients, and every mutation carries an owner predicate (`eq("seller_id", user_id)`), but a future query that forgets one filter would leak across accounts with no database-level stop. | 🟠 High | ⏸ **Needs decision** — see Design Risks. |
 
 ## Contract & Regression Risks
 
@@ -82,7 +82,7 @@ misconfiguration is logged as operator-visible warnings at boot.
 
 ## What Looks Good
 
-- **Single seam.** Only `app/db.py` imports `supabase`; services depend on `Gateway`/`Query` protocols, which is what made a credential-free suite possible at all.
+- **Single seam.** Only `app/database.py` imports `supabase`; services depend on `Gateway`/`Query` protocols, which is what made a credential-free suite possible at all.
 - **Optimistic concurrency done right.** `OfferService.decide` filters the UPDATE on `status = 'pending'` and treats an empty result as a conflict — no lost-update race, independent of the Python pre-check.
 - **Defense in depth on schema.** Check constraints and the partial unique index `offers_one_accepted_per_listing` restate the Python rules, and `test_migration_constraints_mirror_the_python_validation` keeps them from drifting.
 - **XSS-safe by construction.** Autoescape is on and proven by `test_html_output_is_escaped_against_script_injection`, which asserts the literal `<script>` never reaches the document.

@@ -17,7 +17,7 @@ def _trimmed(number: float, places: int) -> str:
     return f"{number:.{places}f}".rstrip("0").rstrip(".")
 
 
-def format_money(amount: int | float | None, *, currency: str = "USD", compact: bool = False) -> str:
+def format_money(amount: float | None, *, currency: str = "USD", compact: bool = False) -> str:
     """Render an amount as currency.
 
     ``compact`` produces catalogue-friendly output: 1250000 -> "$1.25M".
@@ -36,13 +36,13 @@ def format_money(amount: int | float | None, *, currency: str = "USD", compact: 
     return f"{symbol}{value:,.0f}"
 
 
-def format_number(value: int | float | None) -> str:
+def format_number(value: float | None) -> str:
     if value is None:
         return "—"
     return f"{float(value):,.0f}"
 
 
-def format_ratio(numerator: float | int | None, denominator: float | int | None) -> str:
+def format_ratio(numerator: float | None, denominator: float | None) -> str:
     """Multiple, guarded against zero and missing denominators."""
     if not numerator or not denominator:
         return "—"

@@ -13,10 +13,11 @@ import re
 import threading
 import uuid
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime, timezone
-from typing import Any, Iterable
+from typing import Any
 
-from app.db import AuthSession, AuthUser, QueryResult
+from app.database import AuthSession, AuthUser, QueryResult
 
 
 def _now() -> str:
@@ -41,7 +42,7 @@ def _pattern_to_regex(pattern: str) -> re.Pattern[str]:
 
 
 class Filter:
-    __slots__ = ("kind", "column", "value")
+    __slots__ = ("column", "kind", "value")
 
     def __init__(self, kind: str, column: str, value: Any) -> None:
         self.kind = kind
@@ -76,7 +77,7 @@ class Filter:
 class InMemoryQuery:
     """Chainable query that evaluates against the in-memory store."""
 
-    def __init__(self, gateway: "InMemoryGateway", table: str) -> None:
+    def __init__(self, gateway: InMemoryGateway, table: str) -> None:
         self._gateway = gateway
         self._table = table
         self._operation = "select"
@@ -90,17 +91,17 @@ class InMemoryQuery:
 
     # ------------------------------------------------------------------ chain
 
-    def select(self, columns: str = "*", *, count: str | None = None) -> "InMemoryQuery":
+    def select(self, columns: str = "*", *, count: str | None = None) -> InMemoryQuery:
         self._operation = "select"
         self._want_count = count is not None
         return self
 
-    def insert(self, values: dict[str, Any] | list[dict[str, Any]]) -> "InMemoryQuery":
+    def insert(self, values: dict[str, Any] | list[dict[str, Any]]) -> InMemoryQuery:
         self._operation = "insert"
         self._payload = copy.deepcopy(values)
         return self
 
-    def upsert(self, values: dict[str, Any], *, on_conflict: str | None = None) -> "InMemoryQuery":
+    def upsert(self, values: dict[str, Any], *, on_conflict: str | None = None) -> InMemoryQuery:
         self._operation = "upsert"
         self._payload = copy.deepcopy(values)
         self._conflict_columns = tuple(
@@ -108,49 +109,49 @@ class InMemoryQuery:
         )
         return self
 
-    def update(self, values: dict[str, Any]) -> "InMemoryQuery":
+    def update(self, values: dict[str, Any]) -> InMemoryQuery:
         self._operation = "update"
         self._payload = copy.deepcopy(values)
         return self
 
-    def delete(self) -> "InMemoryQuery":
+    def delete(self) -> InMemoryQuery:
         self._operation = "delete"
         return self
 
-    def eq(self, column: str, value: Any) -> "InMemoryQuery":
+    def eq(self, column: str, value: Any) -> InMemoryQuery:
         return self._add("eq", column, value)
 
-    def neq(self, column: str, value: Any) -> "InMemoryQuery":
+    def neq(self, column: str, value: Any) -> InMemoryQuery:
         return self._add("neq", column, value)
 
-    def in_(self, column: str, values: Iterable[Any]) -> "InMemoryQuery":
+    def in_(self, column: str, values: Iterable[Any]) -> InMemoryQuery:
         return self._add("in", column, list(values))
 
-    def gte(self, column: str, value: Any) -> "InMemoryQuery":
+    def gte(self, column: str, value: Any) -> InMemoryQuery:
         return self._add("gte", column, value)
 
-    def lte(self, column: str, value: Any) -> "InMemoryQuery":
+    def lte(self, column: str, value: Any) -> InMemoryQuery:
         return self._add("lte", column, value)
 
-    def ilike(self, column: str, pattern: str) -> "InMemoryQuery":
+    def ilike(self, column: str, pattern: str) -> InMemoryQuery:
         return self._add("ilike", column, pattern)
 
-    def or_ilike(self, columns: Iterable[str], pattern: str) -> "InMemoryQuery":
+    def or_ilike(self, columns: Iterable[str], pattern: str) -> InMemoryQuery:
         return self._add("or_ilike", "*", (tuple(columns), pattern))
 
-    def order(self, column: str, *, descending: bool = False) -> "InMemoryQuery":
+    def order(self, column: str, *, descending: bool = False) -> InMemoryQuery:
         self._orders.append((column, descending))
         return self
 
-    def limit(self, amount: int) -> "InMemoryQuery":
+    def limit(self, amount: int) -> InMemoryQuery:
         self._limit = amount
         return self
 
-    def range(self, start: int, end: int) -> "InMemoryQuery":
+    def range(self, start: int, end: int) -> InMemoryQuery:
         self._window = (start, end)
         return self
 
-    def _add(self, kind: str, column: str, value: Any) -> "InMemoryQuery":
+    def _add(self, kind: str, column: str, value: Any) -> InMemoryQuery:
         self._filters.append(Filter(kind, column, value))
         return self
 
@@ -316,7 +317,7 @@ class InMemoryAuth:
 
 
 class InMemoryGateway:
-    """Drop-in replacement for :class:`app.db.SupabaseGateway`."""
+    """Drop-in replacement for :class:`app.database.SupabaseGateway`."""
 
     def __init__(self) -> None:
         self._tables: dict[str, list[dict[str, Any]]] = defaultdict(list)

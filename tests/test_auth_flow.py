@@ -112,16 +112,16 @@ def test_sign_in_redirects_to_the_original_target(client, app) -> None:
 
 def test_unauthenticated_get_on_protected_page_redirects_to_login(client, gateway) -> None:
     """AC-3."""
-    response = client.get("/seller/listings/new", follow_redirects=False)
+    response = client.get("/listings/new", follow_redirects=False)
 
     assert response.status_code == 303
-    assert response.headers["location"] == "/auth/login?next=/seller/listings/new"
+    assert response.headers["location"] == "/auth/login?next=/listings/new"
     assert "sign in" in client.get(response.headers["location"], follow_redirects=True).text.lower()
 
 
 def test_unauthenticated_post_creates_nothing(client, gateway) -> None:
     """AC-3: the redirect must not execute the protected write."""
-    response = client.post("/seller/listings/new", data={"title": "Sneaky listing"}, follow_redirects=False)
+    response = client.post("/listings/new", data={"title": "Sneaky listing"}, follow_redirects=False)
 
     assert response.status_code == 303
     assert response.headers["location"].startswith("/auth/login?next=")

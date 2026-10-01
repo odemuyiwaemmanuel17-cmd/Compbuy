@@ -6,23 +6,32 @@ import re
 import threading
 from pathlib import Path
 
-from app.db import QueryResult, run_query
+from app.database import QueryResult, run_query
 from tests.conftest import VALID_LISTING, create_listing, make_client, register
 
-MIGRATION = Path("supabase/migrations/0001_initial_schema.sql")
+MIGRATIONS_DIR = Path("supabase/migrations")
 SEED = Path("supabase/seed.sql")
 
-TABLES = ("profiles", "listings", "offers", "watchlist", "conversations", "messages")
+TABLES = ("profiles", "listings", "offers", "watchlist", "conversations", "messages", "nda_requests")
 
 ANON_PAGES = ["/", "/listings", "/listings?category=saas&min_price=1000", "/auth/login", "/auth/register"]
 MEMBER_PAGES = [
     "/dashboard",
     "/seller/listings",
-    "/seller/listings/new",
+    "/seller/data-room",
+    "/listings/new",
     "/buyer/offers",
+    "/buyer/access",
     "/buyer/watchlist",
     "/messages",
 ]
+
+
+def _schema_sql() -> str:
+    """Every migration in filename order, so later files extend the contract."""
+    return "\n".join(
+        path.read_text(encoding="utf-8") for path in sorted(MIGRATIONS_DIR.glob("*.sql"))
+    )
 
 
 def test_dashboard_summarises_listings_and_offers(app, seller, buyer) -> None:
@@ -120,7 +129,7 @@ def test_html_output_is_escaped_against_script_injection(app, client, seller) ->
 
 def test_migration_declares_every_table_with_row_level_security() -> None:
     """AC-7: RLS is defined for each marketplace table."""
-    sql = MIGRATION.read_text(encoding="utf-8")
+    sql = _schema_sql()
 
     for table in TABLES:
         assert f"create table if not exists public.{table}" in sql, table
@@ -132,7 +141,7 @@ def test_migration_declares_every_table_with_row_level_security() -> None:
 
 
 def test_migration_constraints_mirror_the_python_validation() -> None:
-    sql = MIGRATION.read_text(encoding="utf-8")
+    sql = _schema_sql()
 
     assert "check (asking_price > 0)" in sql
     assert "check (annual_revenue >= 0)" in sql
@@ -141,6 +150,29 @@ def test_migration_constraints_mirror_the_python_validation() -> None:
     assert "offers_one_accepted_per_listing" in sql
     assert "watchlist_unique_per_user unique (user_id, listing_id)" in sql
     assert "conversations_unique_thread unique (listing_id, buyer_id)" in sql
+
+    # Data-room rules mirrored in the database, not only in Python.
+    assert "monthly_revenue is null or monthly_revenue > 0" in sql
+    assert "nda_requests_participants_differ check (buyer_id <> seller_id)" in sql
+    assert "create unique index if not exists nda_requests_unique_pair\n  on public.nda_requests (listing_id, buyer_id)" in sql
+    assert "public.assert_nda_signature_integrity()" in sql
+    assert "create type nda_status as enum ('pending', 'approved', 'signed', 'rejected', 'withdrawn')" in sql
+    assert "create type offer_kind as enum ('offer', 'loi')" in sql
+
+
+def test_nda_status_and_offer_kind_enums_match_python() -> None:
+    """The database enum and the Python enum cannot drift apart."""
+    from app.models.enums import NdaStatus, OfferKind
+
+    sql = _schema_sql()
+    declared = re.search(r"create type nda_status as enum \(([^)]*)\)", sql)
+    assert declared is not None
+    values = re.findall(r"'([^']+)'", declared.group(1))
+    assert values == [status.value for status in NdaStatus]
+
+    kinds = re.search(r"create type offer_kind as enum \(([^)]*)\)", sql)
+    assert kinds is not None
+    assert re.findall(r"'([^']+)'", kinds.group(1)) == [kind.value for kind in OfferKind]
 
 
 def test_seed_data_covers_public_and_private_states() -> None:
@@ -151,10 +183,37 @@ def test_seed_data_covers_public_and_private_states() -> None:
     assert "auth.users" in sql
     assert "'pending'" in sql
 
+    # Every data-room state exists in the demo data, plus both offer kinds.
+    for status in ("'signed'", "'approved'", "'rejected'"):
+        assert status in sql, status
+    assert "'loi'" in sql
+    assert "'under_250k'" in sql
+    assert "'250k_to_1m'" in sql
+
+
+def test_seed_monthly_and_annual_figures_agree() -> None:
+    """The demo data respects the derivation the app applies on write."""
+    rows = re.findall(
+        r"'(?:saas|marketplace|content|agency|ecommerce)', "
+        r"(\d+), (\d+), (\d+), (\d+), (\d+), '(\w[\w_]*)',",
+        SEED.read_text(encoding="utf-8"),
+    )
+    assert len(rows) == 7, rows
+    for _asking, monthly, net, annual, profit, band in rows:
+        assert int(annual) == int(monthly) * 12 or abs(int(annual) - int(monthly) * 12) <= 12, (
+            monthly,
+            annual,
+        )
+        assert int(profit) == int(net) * 12 or abs(int(profit) - int(net) * 12) <= 12, (net, profit)
+        from app.models.enums import RevenueBand, revenue_band_for
+
+        assert band == revenue_band_for(int(annual)).value, (annual, band)
+        assert band != RevenueBand.UNDISCLOSED.value
+
 
 def test_gateway_without_credentials_reports_clearly(monkeypatch) -> None:
     from app.config import Settings
-    from app.db import SupabaseGateway
+    from app.database import SupabaseGateway
     from app.errors import ExternalServiceError
 
     monkeypatch.delenv("SUPABASE_URL", raising=False)

@@ -69,7 +69,7 @@ def test_seller_deletes_own_listing(app, seller, gateway) -> None:
 def test_blank_title_and_zero_price_are_rejected_with_no_row_written(app, seller, gateway) -> None:
     """AC-4."""
     response = seller.post(
-        "/seller/listings/new",
+        "/listings/new",
         data={**VALID_LISTING, "title": "", "asking_price": "0", "action": "publish"},
         follow_redirects=False,
     )
@@ -81,21 +81,21 @@ def test_blank_title_and_zero_price_are_rejected_with_no_row_written(app, seller
 
 
 def test_negative_revenue_is_rejected(app, seller, gateway) -> None:
-    """AC-4: annual_revenue < 0."""
+    """AC-4: monthly_revenue must be a positive figure."""
     response = seller.post(
-        "/seller/listings/new",
-        data={**VALID_LISTING, "annual_revenue": "-500", "action": "publish"},
+        "/listings/new",
+        data={**VALID_LISTING, "monthly_revenue": "-500", "action": "publish"},
         follow_redirects=False,
     )
 
     assert response.status_code == 422
-    assert "annual_revenue" in response.text
+    assert "monthly_revenue" in response.text
     assert gateway.rows("listings") == []
 
 
 def test_non_numeric_price_reports_a_field_error(app, seller, gateway) -> None:
     response = seller.post(
-        "/seller/listings/new",
+        "/listings/new",
         data={**VALID_LISTING, "asking_price": "lots", "action": "publish"},
         follow_redirects=False,
     )
@@ -106,7 +106,7 @@ def test_non_numeric_price_reports_a_field_error(app, seller, gateway) -> None:
 
 def test_short_description_is_rejected(app, seller, gateway) -> None:
     response = seller.post(
-        "/seller/listings/new",
+        "/listings/new",
         data={**VALID_LISTING, "description": "too short", "action": "publish"},
         follow_redirects=False,
     )
@@ -160,9 +160,10 @@ def test_seller_workspace_lists_only_their_own_listings(app, seller, buyer, gate
 
 
 def test_seller_form_round_trips_a_known_listing(app, seller) -> None:
-    listing_id = create_listing(seller, annual_profit="")
+    listing_id = create_listing(seller, net_profit="")
 
     page = seller.get(f"/seller/listings/{listing_id}/edit")
     assert page.status_code == 200
     assert VALID_LISTING["title"] in page.text
     assert 'value="2019"' in page.text
+    assert 'value="20000"' in page.text

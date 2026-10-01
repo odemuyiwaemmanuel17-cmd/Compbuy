@@ -16,11 +16,11 @@ Enable buyers to discover and make offers on businesses for sale, and sellers to
 ## Deliverables
 
 - **Config module**: `app/config.py` — `python-dotenv`-loaded `Settings` (Supabase URL, anon key, service key, session secret, site metadata) with fail-fast validation. → keeps credentials out of code and makes the real-Supabase switch a `.env` edit.
-- **Supabase access layer**: `app/db.py` — singleton anon + service-role `create_client` factories behind a `SupabaseGateway` protocol. → single seam that services depend on and tests can substitute.
+- **Supabase access layer**: `app/database.py` — singleton anon + service-role `create_client` factories behind a `SupabaseGateway` protocol. → single seam that services depend on and tests can substitute.
 - **Auth integration**: `app/services/auth_service.py` + `app/dependencies.py` — Supabase email/password sign-up, sign-in, session exchange, signed-httpOnly-cookie session, `current_user` / `require_user` FastAPI deps. → protected seller/buyer surfaces with no client-side token storage.
 - **Data model + migration**: `supabase/migrations/0001_initial_schema.sql` — tables `profiles`, `listings`, `offers`, `watchlist`, `conversations`, `messages`, enums, indexes, and RLS policies. → the schema the app's queries assume, enforced in Postgres rather than in Python.
 - **Listing service + seller CRUD**: `app/services/listing_service.py`, `app/routers/seller.py` — create / edit / publish / unpublish / delete own listing, with `ListingCreate`/`ListingUpdate` Pydantic validation. → the supply side of the marketplace.
-- **Public catalogue**: `app/routers/pages.py` — `GET /` (featured), `GET /listings` with `q`, `category`, `min_price`, `max_price`, `revenue_min`, `sort`, `page`; `GET /listings/{id}` detail. → discoverability, the buyer entry point.
+- **Public catalogue**: `app/routers/listings.py` — `GET /` (featured, via `pages.py`), `GET /listings` with `q`, `category`, `min_price`, `max_price`, `min_band`, `sort`, `page`; `GET /listings/{id}` detail. → discoverability, the buyer entry point.
 - **Offer lifecycle**: `app/routers/offers.py`, `app/services/offer_service.py` — buyer submits offer; seller accepts or declines; illegal transitions rejected. → the transaction core.
 - **Watchlist**: `app/routers/buyer.py` — add/remove favourite listing per buyer. → repeat-visit buyer workflow.
 - **Messaging**: `app/services/message_service.py` + `app/routers/messages.py` — conversation auto-created on first offer, threaded messages restricted to participants. → negotiation channel.
@@ -32,23 +32,38 @@ Enable buyers to discover and make offers on businesses for sale, and sellers to
 **Out of scope:**
 Payment/escrow processing, image upload to Supabase Storage (`image_urls` column is reserved and read-only in this pass), admin back-office, email notifications beyond Supabase's own auth mail, deployment/CI infrastructure, Realtime websockets (messages are fetch-on-load).
 
+### Core Features pass (second increment)
+
+The requested module layout mapped onto the existing code as follows.
+
+| Requested feature | Where it lives | Notes |
+|---|---|---|
+| 1. Database connection (`app/database.py`) | `app/database.py` — `SupabaseGateway`, `get_gateway()`/`set_gateway()`/`gateway_ready()`, `Gateway`/`Query`/`AuthGateway` protocols | Renamed from `app/db.py`. Env-var-driven singleton installed once at app startup; still the only `supabase` import site. |
+| 2. Authentication flow (`app/routers/auth.py`) | `app/routers/auth.py` + `app/services/auth_service.py` + `app/session_store.py` | `sign_up` / `sign_in_with_password`; tokens held in a signed httpOnly `SameSite=Lax` cookie; `CurrentUserDep` protects routes and redirects to `/auth/login?next=…`. |
+| 3. Marketplace & listings (`app/routers/listings.py`) | `app/routers/listings.py` — `GET /listings` (industry + price band + revenue-band filters), `GET /listings/{id}` (gated detail), `GET|POST /listings/new` (create form) | Sensitive fields gated per AC-8. Sellers enter monthly metrics; annuals and the public band are derived server-side. |
+| 4. NDA & secure data room (`app/routers/nda.py`) | `app/routers/nda.py` + `app/services/nda_service.py` + `app/models/nda.py` + `app/schemas/nda.py` + `supabase/migrations/0002_nda_data_room.sql` | Request → approve → sign, saved to `nda_requests`; only `signed` unlocks. Seller inbox `/seller/data-room`, buyer status `/buyer/access`. |
+| 5. Dashboard & offers (`app/routers/dashboard.py`) | `app/routers/dashboard.py`, `app/routers/offers.py`, `app/services/offer_service.py` | Buyers submit an offer **or** a Letter of Intent (`kind`); the seller dashboard aggregates inbound offers plus pending access requests. |
+
 ## Acceptance Criteria
 
 | ID | Type | Criterion |
 |----|------|-----------|
 | AC-1 | Happy path | Given a signed-in seller, when they submit a valid listing, then the listing is persisted with their user id, is visible at `GET /listings/{id}`, and appears in `GET /listings` when filtered by its category and price band. |
 | AC-2 | Happy path | Given an anonymous visitor, when they request `GET /listings?q=saaS&min_price=1000&max_price=99999&sort=price_desc`, then only *published* listings matching every predicate are rendered, page-sized, with total count and pagination links. |
-| AC-3 | Error path (auth) | Given an unauthenticated visitor, when they request `GET /seller/listings/new` or `POST /seller/listings`, then the response is `303` to `/auth/login?next=<original-path>`, the login form renders, and no row is written. |
-| AC-4 | Error path (validation) | Given a signed-in seller, when they submit a listing with a blank title, `asking_price <= 0`, or `annual_revenue < 0`, then the response is `422` naming the offending fields and nothing is persisted. |
+| AC-3 | Error path (auth) | Given an unauthenticated visitor, when they request `GET /listings/new` or `POST /listings`, then the response is `303` to `/auth/login?next=<original-path>`, the login form renders, and no row is written. |
+| AC-4 | Error path (validation) | Given a signed-in seller, when they submit a listing with a blank title, `asking_price <= 0`, `monthly_revenue <= 0`, `net_profit < 0`, or a missing/short reason for selling, then the response is `422` naming the offending fields and nothing is persisted. |
 | AC-5 | Happy path (offers) | Given a signed-in buyer, when they offer on another seller's published listing, then the offer is stored `pending`, the seller sees it on their dashboard, the buyer sees it under their offers, and a conversation exists with exactly both participants; when the seller accepts, the offer becomes `accepted` and a second accept on the same listing returns a conflict error. |
 | AC-6 | Edge case | Given a seller, when they attempt to offer on their own listing or on an unpublish­ed listing, then the request is rejected (`403` / `404`) with an operator-visible message and the offers table is unchanged. |
 | AC-7 | Non-functional | The full test suite passes with **no** `SUPABASE_URL`/keys set (gateway substituted by the in-memory double); every read of `conversations`/`messages` and every mutation of `listings`/`offers` is authorised in Python by owner id, and RLS policies exist for each table in the migration. |
+| AC-8 | Critical (data-room gating) | Given any viewer who has not *signed* an NDA for a listing — anonymous, signed-in without a request, pending, or approved-but-unsigned — when they request `GET /listings/{id}`, then the rendered HTML contains none of the exact business name, monthly revenue, net profit, annual revenue, profit margin, revenue multiple, or reason for selling; each gated slot renders `Members only`, and the public coarse band and asking price still render. Once the request reaches `signed`, all of those values appear for that buyer only, and remain hidden for every other member. |
+| AC-9 | Happy path (NDA workflow) | Given a buyer on a published listing they do not own, when they submit "Request access / Sign NDA" with a note of at least 10 characters, then an `nda_requests` row is saved as `pending` with both participant ids and the listing id; the seller can approve or decline it; after approval the buyer can sign with their name, which stores `status=signed`, `signed_name`, and `signed_at` and unlocks the data room. Duplicate open requests conflict (`409`), non-parties are refused (`403`), signing before approval conflicts, and a declined or withdrawn request can be reopened on the same row. |
+| AC-10 | Happy path (offer or LOI) | Given a buyer, when they submit an offer with `kind=loi` or omit `kind`, then the offer row stores `loi` or `offer` respectively, the seller's dashboard and the buyer's offer list label a letter of intent as such, and an unknown `kind` is rejected without writing a row. |
 
 ## Implementation Path
 
 1. **Interface design** — fix the `SupabaseGateway` protocol, Pydantic schemas, service signatures, and route table so downstream layers stop changing. Unblocks parallel work between data, services, and templates.
 2. **Data model / migration** — author `0001_initial_schema.sql` (tables, enums, indexes, RLS) and `seed.sql`. Unblocks query writing against a known shape.
-3. **Config + gateway + fake** — `config.py`, `db.py`, and `tests/support/fake_supabase.py` implementing the same protocol. Gives a runnable app and a test surface before features land.
+3. **Config + gateway + fake** — `config.py`, `database.py`, and `tests/support/in_memory_gateway.py` implementing the same protocol. Gives a runnable app and a test surface before features land.
 4. **Auth vertical slice** — sign-up/sign-in/out, cookie session, `current_user` dep, login/register templates. Unblocks every protected route.
 5. **Listing write path** — seller create/edit/publish/delete + service + templates. First real domain data.
 6. **Catalogue read path** — home, filtered search, detail page. Consumes step 5 data.
@@ -58,6 +73,16 @@ Payment/escrow processing, image upload to Supabase Storage (`image_urls` column
 10. **Validation + self-review** — narrow-to-broad validation ladder, then `code-review` on the final diff.
 11. **Docs/rollout** — README setup (env, `supabase db reset`/migration apply, run command) and migration application order note.
 
+Second increment (Core Features), executed in this order:
+
+12. **Rename the gateway module** — `app/db.py` → `app/database.py` to match the requested layout, with the existing suite as the safety net.
+13. **Schema extension** — `0002_nda_data_room.sql`: `nda_requests`, monthly metric columns, revenue band + backfill, `offers.kind`, checks, unique pair index, integrity trigger, RLS.
+14. **Masking in the model** — `Listing` gated properties + `unlocked_for()` so no template can read a confidential value by accident.
+15. **NDA service state machine** — conditional-update transitions, `is_unlocked()`, `reveal()`.
+16. **Route reorganisation** — browse/detail/create moved to `listings.py`; `seller.py` narrowed to management; shared form-field extraction so create and edit cannot drift.
+17. **NDA + dashboard surfaces** — request/approve/decline/sign/withdraw routes, seller inbox, buyer status, dashboard panel.
+18. **Re-baseline and extend tests** — existing suite updated for the monthly schema and the new create route, then AC-8/9/10 added.
+
 ## Assumptions
 
 - Marketplace domain = businesses for sale (SaaS, e-commerce, content, agencies), Acquire/Flippa-shaped MVP.
@@ -66,6 +91,9 @@ Payment/escrow processing, image upload to Supabase Storage (`image_urls` column
 - Currency integers (USD), no payment rail; "sold" state is set by the seller, not derived.
 - Python 3.14, deps already installed in the local interpreter; no venv creation requested.
 - No remote exists for this repository, so the PR step will be attempted and its failure recorded rather than bypassed.
+- The catalogue revenue filter operates on the public coarse **band** (`min_band`), not on the exact annual figure the first pass exposed as `revenue_min`. A numeric floor on a gated column is a bisectable side channel that defeats AC-8, so the field was replaced rather than kept for compatibility. `revenue_desc` sorting is retained: ordering alone reveals no figure.
+- Making an offer does **not** require a signed NDA. The brief treats offers and the data room as separate features, so the offer form stays available to any signed-in buyer; only the confidential figures are gated.
+- The seller who owns a listing always sees their own data room (`find_owned`, `list_for_seller`), independent of any NDA row.
 
 ## Open Questions
 

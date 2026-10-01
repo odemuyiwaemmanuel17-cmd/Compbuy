@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from app.models.enums import OfferStatus
+from app.models.enums import OfferKind, OfferStatus
 from app.utils.formatting import format_money, time_ago
 from app.utils.parsing import as_datetime, as_str
 
@@ -20,6 +20,7 @@ class Offer:
     amount: int
     message: str = ""
     status: OfferStatus = OfferStatus.PENDING
+    kind: OfferKind = OfferKind.OFFER
     currency: str = "USD"
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -28,7 +29,7 @@ class Offer:
     buyer_name: str = ""
 
     @classmethod
-    def from_row(cls, row: dict[str, Any]) -> "Offer":
+    def from_row(cls, row: dict[str, Any]) -> Offer:
         listing_join = row.get("listing") if isinstance(row.get("listing"), dict) else {}
         buyer_join = row.get("buyer") if isinstance(row.get("buyer"), dict) else {}
         return cls(
@@ -39,6 +40,7 @@ class Offer:
             amount=int(row.get("amount") or 0),
             message=as_str(row.get("message")),
             status=cls._parse_status(row.get("status")),
+            kind=cls._parse_kind(row.get("kind")),
             currency=as_str(row.get("currency"), default="USD").upper(),
             created_at=as_datetime(row.get("created_at")),
             updated_at=as_datetime(row.get("updated_at")) if row.get("updated_at") else None,
@@ -52,6 +54,21 @@ class Offer:
             return OfferStatus(as_str(raw, default="pending"))
         except ValueError:
             return OfferStatus.PENDING
+
+    @staticmethod
+    def _parse_kind(raw: Any) -> OfferKind:
+        try:
+            return OfferKind(as_str(raw, default="offer"))
+        except ValueError:
+            return OfferKind.OFFER
+
+    @property
+    def kind_label(self) -> str:
+        return self.kind.label
+
+    @property
+    def is_letter_of_intent(self) -> bool:
+        return self.kind is OfferKind.LOI
 
     @property
     def amount_display(self) -> str:

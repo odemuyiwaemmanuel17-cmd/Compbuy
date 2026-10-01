@@ -12,7 +12,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.db import SupabaseAuth, SupabaseQuery, QueryResult, translate_supabase_error
+from app.database import (
+    QueryResult,
+    SupabaseAuth,
+    SupabaseQuery,
+    translate_supabase_error,
+)
 from app.errors import (
     AuthenticationError,
     ConflictError,

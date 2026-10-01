@@ -31,7 +31,7 @@ class User:
         return bool(owner_id) and owner_id == self.id
 
     @classmethod
-    def from_profile(cls, user_id: str, row: dict[str, Any] | None) -> "User":
+    def from_profile(cls, user_id: str, row: dict[str, Any] | None) -> User:
         row = row or {}
         return cls(
             id=user_id,
@@ -42,5 +42,5 @@ class User:
         )
 
     @classmethod
-    def blank(cls, user_id: str) -> "User":
+    def blank(cls, user_id: str) -> User:
         return cls(id=user_id)
