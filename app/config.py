@@ -102,11 +102,22 @@ class Settings:
         return warnings
 
 
+def _deployed_environment() -> str:
+    """Infer the environment from the host platform when APP_ENV is not set.
+
+    Vercel injects ``VERCEL_ENV=production|preview|development``. Both deployed
+    values must be treated as production: the container is shared and short-lived,
+    so without a real ``SESSION_SECRET`` the app would fall back to an ephemeral key
+    generated on every cold start and silently invalidate all session cookies.
+    """
+    return "production" if _env_str("VERCEL_ENV").lower() in {"production", "preview"} else "development"
+
+
 def settings_from_env(*, dotenv_path: str | os.PathLike[str] | None = None) -> Settings:
     """Build settings from the process environment plus an optional `.env` file."""
     load_dotenv(dotenv_path, override=False)
 
-    environment = _env_str("APP_ENV", "development")
+    environment = _env_str("APP_ENV") or _deployed_environment()
     return Settings(
         site_name=_env_str("SITE_NAME", SITE_NAME),
         environment=environment,

@@ -157,6 +157,64 @@ and no confidential figure reaches the HTML of a visitor without a signed NDA.
 | `COOKIE_SECURE` | set `Secure` on the session cookie | `true` when `APP_ENV=production` |
 | `LISTINGS_PER_PAGE` | catalogue page size | `12` |
 
+## Deploying
+
+### Vercel (zero-config FastAPI)
+
+Vercel detects a FastAPI instance named `app` at a supported entrypoint, and
+`app/main.py` already provides one — so no `vercel.json` and no build command are
+required. Import the repo, and it builds the whole site as a single Python function.
+
+Set these in **Project Settings → Environment Variables**:
+
+| Variable | Value | Why |
+|---|---|---|
+| `SUPABASE_URL` | your project URL | required |
+| `SUPABASE_ANON_KEY` | your anon key | required |
+| `SUPABASE_SERVICE_ROLE_KEY` | your service-role key | required for writes |
+| `SESSION_SECRET` | `python -c "import secrets; print(secrets.token_urlsafe(32))"` | **required** — see below |
+
+`APP_ENV` does not need to be set: when `VERCEL_ENV` is `production` or `preview` the
+app treats itself as deployed, which turns on `COOKIE_SECURE` and turns off debug.
+
+`SESSION_SECRET` is not optional once deployed. The signed session cookie carries the
+Supabase tokens, and a container is shared and short-lived: if the secret were generated
+at boot, every cold start would invalidate everyone's session. The app therefore raises
+`RuntimeError: SESSION_SECRET must be set in production` instead of starting with an
+ephemeral key.
+
+Two platform notes worth knowing:
+
+- **Static files stay in the function.** `app/static/` would normally be promoted to the
+  CDN, but Vercel keeps mounted files inside the function when top-level middleware is
+  present, and `SessionMiddleware` is one. Correct, just not CDN-cached.
+- **Cold starts.** The first request after a period of inactivity pays Python import plus
+  a Supabase round-trip. If listing pages time out under load, raise the function's
+  `maxDuration` by adding:
+
+  ```json
+  { "functions": { "app/main.py": { "maxDuration": 30 } } }
+  ```
+
+### Any long-running host (Fly.io, Railway, Docker, a VPS)
+
+```bash
+pip install -r requirements.txt
+python run.py --host 0.0.0.0 --port "$PORT"
+```
+
+This is the better fit if you need local disk, websocket updates, or no cold starts. Set
+`APP_ENV=production` and `SESSION_SECRET` the same way.
+
+### Before either deploy works
+
+Apply the schema — the app cannot serve listings without it:
+
+```bash
+supabase link --project-ref <ref>
+supabase db push          # 0001 then 0002
+```
+
 ## Notes and limitations
 
 - No payments or escrow: an accepted offer records intent, and the seller marks the
