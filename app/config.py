@@ -68,6 +68,9 @@ class Settings:
     listings_per_page: int = 12
     max_listings_per_page: int = 50
 
+    #: Raw `VERCEL_ENV` (or equivalent platform hint), kept for diagnostics only.
+    platform_environment: str | None = None
+
     def __post_init__(self) -> None:
         if self.listings_per_page < 1:
             raise ValueError("listings_per_page must be >= 1")
@@ -101,6 +104,32 @@ class Settings:
             warnings.append("COOKIE_SECURE should be true in production.")
         return warnings
 
+    def missing_required(self) -> list[str]:
+        """Environment variables a deployed app cannot serve traffic without.
+
+        Only `SESSION_SECRET` blocks: without it every cookie minted is signed
+        with a key that dies with the container, so serving pages would just
+        produce a site that silently logs users out. Supabase credentials are
+        not listed here because their absence degrades data pages to a clear
+        502 while the rest of the site still works.
+        """
+        if not self.is_production:
+            return []
+        return [] if self.session_secret else ["SESSION_SECRET"]
+
+    def presence_report(self) -> dict[str, bool]:
+        """Which deployment variables are set — names and presence only.
+
+        Values never leave the process; this exists so a broken deploy can
+        explain itself over HTTP instead of returning an opaque 500.
+        """
+        return {
+            "SUPABASE_URL": bool(self.supabase_url),
+            "SUPABASE_ANON_KEY": bool(self.supabase_anon_key),
+            "SUPABASE_SERVICE_ROLE_KEY": bool(self.supabase_service_role_key),
+            "SESSION_SECRET": bool(self.session_secret),
+        }
+
 
 def _deployed_environment() -> str:
     """Infer the environment from the host platform when APP_ENV is not set.
@@ -130,6 +159,7 @@ def settings_from_env(*, dotenv_path: str | os.PathLike[str] | None = None) -> S
         session_max_age_seconds=_env_int("SESSION_MAX_AGE_SECONDS", 60 * 60 * 24 * 7),
         cookie_secure=_env_bool("COOKIE_SECURE", default=environment.lower() == "production"),
         listings_per_page=_env_int("LISTINGS_PER_PAGE", 12),
+        platform_environment=_env_str("VERCEL_ENV") or None,
     )
 
 

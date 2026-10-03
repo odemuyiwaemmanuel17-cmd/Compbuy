@@ -179,9 +179,25 @@ app treats itself as deployed, which turns on `COOKIE_SECURE` and turns off debu
 
 `SESSION_SECRET` is not optional once deployed. The signed session cookie carries the
 Supabase tokens, and a container is shared and short-lived: if the secret were generated
-at boot, every cold start would invalidate everyone's session. The app therefore raises
-`RuntimeError: SESSION_SECRET must be set in production` instead of starting with an
-ephemeral key.
+at boot, every cold start would invalidate everyone's session. So a deployed app with no
+secret installs a `ConfigurationGuard` that answers **503** on every route — no sessions
+are minted, no query runs, no template renders — and names the missing variable.
+
+That is deliberate instead of raising at import, because an import error collapses on
+Vercel into a bare `500 FUNCTION_INVOCATION_FAILED` that hides the cause. The deployed
+site therefore diagnoses itself:
+
+```bash
+curl https://<your-deployment>.vercel.app/healthz
+# {"status":"config_error","missing":["SESSION_SECRET"],
+#  "variables":{"SUPABASE_URL":true,"SUPABASE_ANON_KEY":true,...},
+#  "hint":"Set these ... for BOTH Production and Preview, then Redeploy."}
+```
+
+`/healthz` reports variable **names and presence only** — never a value. Once every
+variable is set the guard disappears and `/healthz` returns `200 {"status":"ok",...}`.
+Locally, `python run.py` still raises immediately when `APP_ENV=production` and the
+secret is missing.
 
 Vercel scopes variables per environment, and Production, Preview, and Development are
 three separate lists. A URL like `compbuy-5w77.vercel.app` is a **Preview** deployment, so

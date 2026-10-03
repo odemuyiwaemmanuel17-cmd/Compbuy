@@ -10,7 +10,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -46,6 +46,49 @@ def _session_secret(settings: Settings) -> str:
         )
     logger.warning("SESSION_SECRET not set - using an ephemeral key; sessions end on restart.")
     return secrets.token_urlsafe(32)
+
+
+class ConfigurationGuard:
+    """Outermost ASGI layer for a deployed-but-unconfigured app.
+
+    A raised import error turns a whole Vercel deployment into
+    `500 FUNCTION_INVOCATION_FAILED`, which tells the operator nothing about
+    *which* variable is missing. This keeps the function importable and
+    answers every request with an explicit 503 naming the gap, while refusing
+    to route a single byte of application logic — no sessions, no queries, no
+    templates — until the blockers are gone. Failing loudly, not silently.
+    """
+
+    def __init__(self, app: object, settings: Settings) -> None:
+        self.app = app
+        self.settings = settings
+        self.blockers = settings.missing_required()
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http" or not self.blockers:
+            await self.app(scope, receive, send)
+            return
+
+        diagnostics = {
+            "status": "config_error",
+            "environment": self.settings.environment,
+            "platform_environment": self.settings.platform_environment,
+            "missing": self.blockers,
+            "variables": self.settings.presence_report(),
+            "cookie_secure": self.settings.cookie_secure,
+            "hint": "Set these in Vercel -> Project Settings -> Environment "
+                    "Variables for BOTH Production and Preview, then Redeploy.",
+        }
+        if scope.get("path", "") == "/healthz":
+            response: JSONResponse | PlainTextResponse = JSONResponse(diagnostics, status_code=503)
+        else:
+            response = PlainTextResponse(
+                "Compbuy is deployed but not configured. Missing: "
+                + ", ".join(self.blockers)
+                + "\n\nGET /healthz returns the full configuration report.",
+                status_code=503,
+            )
+        await response(scope, receive, send)
 
 
 def create_app(
@@ -87,13 +130,29 @@ def create_app(
     app.state.settings = config
     app.state.templates = MarketplaceTemplates(config)
 
+    blockers = config.missing_required()
+    app.state.config_blockers = blockers
+    if blockers:
+        logger.error(
+            "Deployed without %s — every route answers 503 until it is configured.",
+            ", ".join(blockers),
+        )
+        # Never used for a real session: ConfigurationGuard rejects upstream of it.
+        signing_secret = secrets.token_urlsafe(32)
+    else:
+        signing_secret = _session_secret(config)
+
     app.add_middleware(
         SessionMiddleware,
-        secret_key=_session_secret(config),
+        secret_key=signing_secret,
         max_age=config.session_max_age_seconds,
         same_site="lax",
         https_only=config.cookie_secure,
     )
+    # Added last so it is the outermost layer: no routing, session decoding, or
+    # template rendering happens while the deployment is unconfigured.
+    if blockers:
+        app.add_middleware(ConfigurationGuard, settings=config)
 
     if STATIC_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
