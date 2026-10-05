@@ -68,8 +68,13 @@ class Settings:
     listings_per_page: int = 12
     max_listings_per_page: int = 50
 
-    #: Raw `VERCEL_ENV` (or equivalent platform hint), kept for diagnostics only.
+    #: Platform hints (Vercel). Non-secret identifiers, used only by /healthz
+    #: so a deployment can say *which* project and *which build* is answering.
     platform_environment: str | None = None
+    platform_url: str | None = None
+    platform_production_url: str | None = None
+    platform_commit: str | None = None
+    platform_commit_ref: str | None = None
 
     def __post_init__(self) -> None:
         if self.listings_per_page < 1:
@@ -130,6 +135,21 @@ class Settings:
             "SESSION_SECRET": bool(self.session_secret),
         }
 
+    def platform_report(self) -> dict[str, str | None]:
+        """Non-secret platform identity, allowlisted field by field.
+
+        Deliberately not a dump of the environment: only these five keys, all
+        of which are public hostnames, a branch name, or a commit hash that is
+        already published in the repository.
+        """
+        return {
+            "environment": self.platform_environment,
+            "deployment_url": self.platform_url,
+            "production_url": self.platform_production_url,
+            "commit": self.platform_commit,
+            "commit_ref": self.platform_commit_ref,
+        }
+
 
 def _deployed_environment() -> str:
     """Infer the environment from the host platform when APP_ENV is not set.
@@ -160,6 +180,10 @@ def settings_from_env(*, dotenv_path: str | os.PathLike[str] | None = None) -> S
         cookie_secure=_env_bool("COOKIE_SECURE", default=environment.lower() == "production"),
         listings_per_page=_env_int("LISTINGS_PER_PAGE", 12),
         platform_environment=_env_str("VERCEL_ENV") or None,
+        platform_url=_env_str("VERCEL_URL") or None,
+        platform_production_url=_env_str("VERCEL_PROJECT_PRODUCTION_URL") or None,
+        platform_commit=_env_str("VERCEL_GIT_COMMIT_SHA") or None,
+        platform_commit_ref=_env_str("VERCEL_GIT_COMMIT_REF") or None,
     )
 
 

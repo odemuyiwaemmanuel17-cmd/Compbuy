@@ -227,3 +227,68 @@ def test_missing_secret_is_the_only_hard_blocker() -> None:
     assert settings.missing_required() == []
     assert settings.has_supabase_credentials is False
     assert any("SUPABASE_URL" in warning for warning in settings.warning_list())
+
+
+# ------------------------------------------------------ deployment identity
+#
+# "The variables are set but the app says they are not" has exactly two causes:
+# the running build predates the save, or the save happened on another project.
+# Reporting which build and which project is answering separates them.
+
+def test_platform_identity_is_read_from_the_environment(monkeypatch) -> None:
+    from app.config import settings_from_env
+
+    _env(monkeypatch,
+         APP_ENV=None, VERCEL_ENV="preview", VERCEL_URL="compbuy-abc.vercel.app",
+         VERCEL_PROJECT_PRODUCTION_URL="compbuy.vercel.app",
+         VERCEL_GIT_COMMIT_SHA="b9d732665089eedda032e9f04393733057ba48bf",
+         VERCEL_GIT_COMMIT_REF="main")
+    report = settings_from_env().platform_report()
+    assert report == {
+        "environment": "preview",
+        "deployment_url": "compbuy-abc.vercel.app",
+        "production_url": "compbuy.vercel.app",
+        "commit": "b9d732665089eedda032e9f04393733057ba48bf",
+        "commit_ref": "main",
+    }
+
+
+def test_platform_identity_is_absent_off_platform(monkeypatch) -> None:
+    from app.config import settings_from_env
+
+    for key in ("VERCEL_ENV", "VERCEL_URL", "VERCEL_PROJECT_PRODUCTION_URL",
+                "VERCEL_GIT_COMMIT_SHA", "VERCEL_GIT_COMMIT_REF"):
+        monkeypatch.delenv(key, raising=False)
+    report = settings_from_env().platform_report()
+    assert set(report) == {"environment", "deployment_url", "production_url",
+                           "commit", "commit_ref"}
+    assert all(value is None for value in report.values())
+
+
+def test_the_guard_publishes_which_deployment_is_answering() -> None:
+    from app.config import unconfigured_settings
+    from app.main import create_app
+
+    settings = unconfigured_settings().with_overrides(
+        environment="production", session_secret="", cookie_secure=True,
+        platform_environment="production",
+        platform_production_url="compbuy.vercel.app",
+        platform_commit="deadbeef", platform_commit_ref="main")
+    body = TestClient(create_app(settings=settings)).get("/healthz").json()
+    assert body["platform"]["production_url"] == "compbuy.vercel.app"
+    assert body["platform"]["commit"] == "deadbeef"
+
+
+def test_identity_report_is_an_allowlist_not_an_environment_dump() -> None:
+    """A stray secret-shaped variable must never ride out on the diagnostic."""
+    from app.config import unconfigured_settings
+
+    settings = unconfigured_settings().with_overrides(
+        environment="production", session_secret="super-secret-value",
+        supabase_service_role_key="service-role-secret",
+        platform_environment="production", platform_url="x.vercel.app")
+    assert set(settings.platform_report()) == {
+        "environment", "deployment_url", "production_url", "commit", "commit_ref"}
+    assert "super-secret-value" not in str(settings.platform_report())
+    assert "super-secret-value" not in str(settings.presence_report())
+    assert "service-role-secret" not in str(settings.presence_report())

@@ -72,7 +72,7 @@ class ConfigurationGuard:
         diagnostics = {
             "status": "config_error",
             "environment": self.settings.environment,
-            "platform_environment": self.settings.platform_environment,
+            "platform": self.settings.platform_report(),
             "missing": self.blockers,
             "variables": self.settings.presence_report(),
             "cookie_secure": self.settings.cookie_secure,
@@ -216,6 +216,7 @@ def create_app(
             "status": "ok",
             "gateway_configured": gateway_ready(),
             "supabase_configured": config.has_supabase_credentials,
+            "platform": config.platform_report(),
         }
 
     return app
