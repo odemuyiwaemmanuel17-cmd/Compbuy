@@ -23,6 +23,7 @@ from app.errors import (
     ConflictError,
     ExternalServiceError,
     NotFoundError,
+    SchemaNotInstalledError,
     ValidationError,
 )
 
@@ -339,6 +340,11 @@ def test_user_from_token_reads_the_verified_identity() -> None:
     [
         ("duplicate key value violates unique constraint", ConflictError),
         ("the requested resource does not exist", NotFoundError),
+        ('relation "public.listings" does not exist', SchemaNotInstalledError),
+        ("Could not find the table 'public.listings' in the schema cache",
+         SchemaNotInstalledError),
+        ("PGRST205 no such table", SchemaNotInstalledError),
+        ("error: 42P01", SchemaNotInstalledError),
         ("Invalid login credentials", AuthenticationError),
         ("User already registered", ConflictError),
         ("Password should be at least 6 characters", ValidationError),
@@ -351,6 +357,25 @@ def test_supabase_errors_translate_to_expected_status_codes(message: str, expect
 
     assert isinstance(translated, expected)
     assert translated.status_code == expected.status_code
+
+
+def test_a_missing_table_is_not_reported_as_a_missing_page() -> None:
+    """A fresh Supabase project must not look like a broken link on every route."""
+    translated = translate_supabase_error(
+        RuntimeError('relation "public.listings" does not exist'), resource="listing")
+
+    assert isinstance(translated, SchemaNotInstalledError)
+    assert translated.status_code == 503
+    assert "supabase/migrations" in translated.message
+    assert "listing" in translated.message
+
+
+def test_a_real_missing_row_still_reads_as_a_404() -> None:
+    """The guard must not swallow genuine not-founds."""
+    for message in ("the listing does not exist", "resource not found",
+                    "the nda you are looking for does not exist"):
+        translated = translate_supabase_error(RuntimeError(message), resource="listing")
+        assert isinstance(translated, NotFoundError), message
 
 
 def test_unknown_supabase_error_becomes_a_502_not_a_500() -> None:

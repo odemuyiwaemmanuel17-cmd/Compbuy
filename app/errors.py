@@ -61,6 +61,21 @@ class ExternalServiceError(AppError):
     default_message = "The marketplace data service is unavailable. Please try again shortly."
 
 
+class SchemaNotInstalledError(AppError):
+    """The database exists but the migrations have not been applied to it.
+
+    This is a deployment fault, not a missing row, so it must not be rendered
+    as a 404 — that sends whoever is debugging the site looking for a bad link
+    while every page fails for the same reason. 503 says "the service cannot
+    answer yet" and the message says what to do about it.
+    """
+
+    status_code = 503
+    default_message = (
+        "The marketplace data schema is not installed in this project yet."
+    )
+
+
 __all__ = [
     "AppError",
     "AuthenticationError",
@@ -68,5 +83,6 @@ __all__ = [
     "ExternalServiceError",
     "NotFoundError",
     "PermissionDeniedError",
+    "SchemaNotInstalledError",
     "ValidationError",
 ]

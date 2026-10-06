@@ -23,6 +23,7 @@ from app.errors import (
     ConflictError,
     ExternalServiceError,
     NotFoundError,
+    SchemaNotInstalledError,
     ValidationError,
 )
 
@@ -312,12 +313,45 @@ class SupabaseGateway:
         return self._auth
 
 
+#: Postgres/PostgREST signatures meaning "this relation is not in the schema".
+#: PGRST205 is "could not find the table", PGRST204 "could not find the column"
+#: (a partially applied migration). Note that PGRST116 is *not* listed: that one
+#: means "no rows returned", which is a genuine empty result, not a fault.
+_SCHEMA_MARKERS = (
+    "42p01",
+    "undefined_table",
+    "pgrst205",
+    "pgrst204",
+    "could not find the table",
+    "could not find the column",
+    "schema cache",
+)
+
+
+def _schema_is_missing(message: str) -> bool:
+    """True when the database is reachable but the migrations were never applied.
+
+    A missing row and a missing table both arrive as "does not exist" text, and
+    conflating them makes a fresh deployment look like a broken link on every
+    page. The relation/table qualifier is what separates them.
+    """
+    lowered = message.lower()
+    if any(marker in lowered for marker in _SCHEMA_MARKERS):
+        return True
+    return "does not exist" in lowered and ("relation" in lowered or "table" in lowered)
+
+
 def translate_supabase_error(error: Exception, *, resource: str) -> AppError:
     """Map client exceptions onto application errors."""
     message = str(error)
     lowered = message.lower()
     if "duplicate key" in lowered or "already exists" in lowered:
         return ConflictError(f"That {resource} already exists.")
+    if _schema_is_missing(message):
+        return SchemaNotInstalledError(
+            f"The marketplace is not set up yet: the {resource} table does not exist in "
+            "this Supabase project. Apply the SQL in supabase/migrations, then reload."
+        )
     if "not found" in lowered or "does not exist" in lowered:
         return NotFoundError(f"The {resource} you are looking for does not exist.")
     if "invalid login credentials" in lowered or "log in attempted" in lowered:
